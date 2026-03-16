@@ -39,10 +39,17 @@ async def get_printer_data(ip):
 
     type_result = await snmp_get(ip, '1.3.6.1.2.1.1.1.0')
     if type_result is None:
-        return None, None, None
+        return (
+            "Nem sikerült a lekérdezés",
+            "Nem sikerült a lekérdezés",
+            "Nem sikerült a lekérdezés"
+        )
 
     full_type = type_result.prettyPrint()
-    printer_type = " ".join(full_type.split()[:3])
+    if not full_type.strip():
+        printer_type = "Nem sikerült a lekérdezés"
+    else:
+        printer_type = " ".join(full_type.split()[:3])
 
     # alap OID-ok
     page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
@@ -64,15 +71,18 @@ async def get_printer_data(ip):
         type_result = await snmp_get(ip, type_oid)
         if type_result:
             full_type = type_result.prettyPrint()
-            printer_type = full_type
+            if full_type.strip():
+                printer_type = full_type
+            else:
+                printer_type = "Nem sikerült a lekérdezés"
 
     # oldalszám lekérdezés
     page_result = await snmp_get(ip, page_oid)
-    pages = page_result if page_result is not None else "Hiba"
+    pages = page_result if page_result is not None else "Nem sikerült a lekérdezés"
 
     # sorozatszám lekérdezés
     serial_result = await snmp_get(ip, serial_oid)
-    serial = serial_result.prettyPrint() if serial_result is not None else "Ismeretlen"
+    serial = serial_result.prettyPrint() if serial_result is not None else "Nem sikerült a lekérdezés"
 
     return printer_type, pages, serial
 
@@ -88,12 +98,12 @@ async def run_query():
             
             # JSON kompatibilis típus
             if page_count is None:
-                page_count = "Hiba"
+                page_count = "Nem sikerült a lekérdezés"
             else:
                 page_count = int(page_count)  # Counter32 -> int
             
             if serial is None:
-                serial = "Ismeretlen"
+                serial = "Nem sikerült a lekérdezés"
             else:
                 serial = str(serial)  # Counter32 vagy OctetString -> str
 
@@ -111,9 +121,9 @@ async def run_query():
             results[ip] = {
                 "id": printer_id,
                 "name": location,
-                "type": "Hiba",
-                "pages": "Hiba",
-                "serial": "Hiba",
+                "type": "Nem sikerült a lekérdezés",
+                "pages": "Nem sikerült a lekérdezés",
+                "serial": "Nem sikerült a lekérdezés",
                 "table": table_name,
                 "order": order,
                 "ip": ip
