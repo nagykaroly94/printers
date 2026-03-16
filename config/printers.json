@@ -1,5 +1,11 @@
 {
-  "192.168.1.53": [41181, "Pető Andi", "Kerekes 2/A", 4],
+  "192.168.0.159": [32769, "Juhász László", "Kerekes 2/A", 1],
+  "192.168.2.224": [39988, "Rendelés felvétel", "Kerekes 2/A", 2],
+  "192.168.1.53": [41181, "Pető Andi", "Kerekes 2/A", 3],
+  "192.168.1.118": ["NO3675", "Suba Kata", "Kerekes 2/A", 4],
+  "192.168.0.100": [46724, "Novák Zsolt", "Kerekes 2/A", 5],
+  "192.168.2.112": [53550, "Hegedűsné Szilágyi Tímea", "Kerekes 2/A", 6],
+  "192.168.1.78": [50927, "Áruforgalom", "Kerekes 2/A", 7],
   "192.168.3.60": [42608, "Tóth Tamás", "Kerekes Emelet", 1],
   "192.168.0.71": [43374, "Munkaügy MT", "Kerekes Emelet", 2],
   "192.168.3.197": [40924, "Magony Laci", "Kerekes Emelet", 3],
@@ -31,5 +37,6 @@
   "192.168.2.144": [40839, "Áruforgalom MT", "Mealtrade Füszért", 7],
   "192.168.0.173": [43376, "Kiszállítás MT", "Mealtrade Füszért", 8],
   "192.168.3.126": [41713, "Kovács Zoli Friss", "Mealtrade Friss", 1],
-  "192.168.0.208": [41234, "Szabó Sanyi", "Forrás Ebes", 1]
+  "192.168.0.208": [41234, "Szabó Sanyi", "Forrás Ebes", 1],
+  "192.168.5.215": [99999, "Hotel Teszt", "Hotel Délibáb", 1]
 }

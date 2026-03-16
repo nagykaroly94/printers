@@ -17,15 +17,15 @@ function update(){
         for(let table_name in grouped){
             grouped[table_name].sort((a,b)=>a.order-b.order)
             let table = document.createElement("table")
-            table.innerHTML = `<tr><th>ID</th><th>Hely</th><th>IP</th><th>Típus</th><th>Oldalszám</th><th>Sorozatszám</th></tr>`
+            table.innerHTML = `<tr><th>ID</th><th>Hely</th><th>IP</th><th>Típus</th><th>Sorozatszám</th><th>Oldalszám</th></tr>`
             grouped[table_name].forEach(r=>{
                 table.innerHTML += `<tr>
                     <td>${r.id}</td>
                     <td>${r.name}</td>
                     <td><a href="http://${r.ip}" target="_blank" style="color:#22c55e;text-decoration:none;">${r.ip}</a></td>
                     <td>${r.type}</td>
-                    <td>${r.pages}</td>
                     <td>${r.serial}</td>
+                    <td>${r.pages}</td>
                 </tr>`
             })
             let h = document.createElement("h2")

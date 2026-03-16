@@ -36,19 +36,41 @@ async def snmp_get(ip, oid):
 
 async def get_printer_data(ip):
     """Lekérdezi a nyomtató típusát, oldalszámát és sorozatszámát"""
+
     type_result = await snmp_get(ip, '1.3.6.1.2.1.1.1.0')
     if type_result is None:
         return None, None, None
-    full_type = type_result.prettyPrint()
-    printer_type = " ".join(full_type.split()[:2])
 
-    page_oid='1.3.6.1.2.1.43.10.2.1.4.1.1'
+    full_type = type_result.prettyPrint()
+    printer_type = " ".join(full_type.split()[:3])
+
+    # alap OID-ok
+    page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
+    type_oid = None
+    serial_oid = '1.3.6.1.2.1.43.5.1.1.17.1'
+
+    # Canon imageRUNNER1133 kivétel
     if "Canon imageRUNNER1133" in full_type:
-        page_oid='1.3.6.1.4.1.1602.1.11.1.3.1.4.113'
-    page_result = await snmp_get(ip,page_oid)
+        page_oid = '1.3.6.1.4.1.1602.1.11.1.3.1.4.113'
+
+    # Canon iR-ADV 525 III kivétel
+    if "Canon iR-ADV 525 III" in full_type:
+        page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
+        type_oid = '1.3.6.1.2.1.25.3.2.1.3.1'
+        serial_oid = '1.3.6.1.2.1.43.5.1.1.17.1'
+
+    # típus lekérdezés speciális OID-dal ha kell
+    if type_oid:
+        type_result = await snmp_get(ip, type_oid)
+        if type_result:
+            full_type = type_result.prettyPrint()
+            printer_type = full_type
+
+    # oldalszám lekérdezés
+    page_result = await snmp_get(ip, page_oid)
     pages = page_result if page_result is not None else "Hiba"
 
-    serial_oid='1.3.6.1.2.1.43.5.1.1.17.1'
+    # sorozatszám lekérdezés
     serial_result = await snmp_get(ip, serial_oid)
     serial = serial_result.prettyPrint() if serial_result is not None else "Ismeretlen"
 
@@ -120,29 +142,41 @@ def download_table_xlsx(table_name):
     wb = Workbook()
     ws = wb.active
     ws.title = "Nyomtatók"
-    ws.append(["Azonosító","Hely","IP cím","Típus","Oldalszám","Sorozatszám"])
+    ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám"])
     for r in results.values():
         if r.get("table") == table_name:
-            ws.append([r["id"], r["name"], r["ip"], r["type"], r["pages"], r["serial"]])
+            ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"]])
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f"attachment; filename={table_name}.xlsx"})
+
+    headers = {
+        "Content-Disposition": f"attachment; filename={table_name}.xlsx",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "X-Content-Type-Options": "nosniff"  # Chrome biztonságosabbnak látja
+    }
+
+    return Response(output, headers=headers)
 
 @app.route("/printer_pages.xlsx")
 def download_all_xlsx():
     wb = Workbook()
     ws = wb.active
     ws.title = "Nyomtatók"
-    ws.append(["Azonosító","Hely","IP cím","Típus","Oldalszám","Sorozatszám","Táblázat"])
+    ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám","Táblázat"])
     for r in results.values():
-        ws.append([r["id"], r["name"], r["ip"], r["type"], r["pages"], r["serial"], r["table"]])
+        ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"], r["table"]])
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": "attachment; filename=Teljes_tablazat.xlsx"})
+
+    headers = {
+        "Content-Disposition": "attachment; filename=Teljes_tablazat.xlsx",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "X-Content-Type-Options": "nosniff"  # Chrome biztonságosabbnak látja
+    }
+
+    return Response(output, headers=headers)
 
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=5000)
