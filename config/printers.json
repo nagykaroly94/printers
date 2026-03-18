@@ -36,7 +36,13 @@
   "192.168.1.144": [39232, "Pénzügy MT", "Mealtrade Füszért", 6],
   "192.168.2.144": [40839, "Áruforgalom MT", "Mealtrade Füszért", 7],
   "192.168.0.173": [43376, "Kiszállítás MT", "Mealtrade Füszért", 8],
-  "192.168.3.126": [41713, "Kovács Zoli Friss", "Mealtrade Friss", 1],
+  "192.168.1.187": [43218, "Szamlazó 1", "Mealtrade Friss", 1],
+  "192.168.1.199": [43219, "Szamlazó 2", "Mealtrade Friss", 2],
+  "192.168.1.188": [41607, "Szamlazó 3", "Mealtrade Friss", 3],
+  "192.168.1.192": [38627, "Szamlazó 4", "Mealtrade Friss", 4],
+  "192.168.2.46": [36216, "Elek Sándor", "Mealtrade Friss", 5],
+  "192.168.3.126": [41713, "Kovács Zoltán", "Mealtrade Friss", 6],
   "192.168.0.208": [41234, "Szabó Sanyi", "Forrás Ebes", 1],
-  "192.168.5.215": [99999, "Hotel Teszt", "Hotel Délibáb", 1]
+  "192.168.5.215": [99999, "Hotel Teszt", "Hotel Délibáb", 1],
+  "192.168.2.149": [39988, "Szakadáti Zsolt", "Kerekes Raktár", 1]
 }

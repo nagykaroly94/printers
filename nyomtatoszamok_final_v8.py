@@ -7,17 +7,44 @@ from pysnmp.hlapi.v3arch.asyncio import (
     ObjectType, ObjectIdentity, get_cmd
 )
 import threading
-import json
+# import json
 from flask import render_template
+import mysql.connector
+
+db = mysql.connector.connect(
+    host="localhost",
+    user="nagykar",
+    password="714dcakK!",
+    database="nyomtat"
+)
 
 app = Flask(__name__)
 
 results = {}
 running = False
 
-# Nyomtatók lekérdezése JSON file-ból
-with open("config/printers.json", "r", encoding="utf-8") as f:
-    ip_locations = json.load(f)
+# Nyomtatók lekérdezése MySQL-ből
+def load_printers():
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT azonosito, gep_helye, ip, tabla, sorrend FROM nyomtatok")
+    rows = cursor.fetchall()
+
+    printers = {}
+    for r in rows:
+        printers[r["ip"]] = (
+            r["azonosito"],
+            r["gep_helye"],
+            r["tabla"],
+            r["sorrend"]
+        )
+
+    return printers
+
+ip_locations = load_printers()
+
+# # Nyomtatók lekérdezése JSON file-ból
+# with open("config/printers.json", "r", encoding="utf-8") as f:
+#     ip_locations = json.load(f)
 
 # SNMP lekérdezés
 async def snmp_get(ip, oid):
@@ -89,12 +116,33 @@ async def get_printer_data(ip):
 # Lekérdezés futtatása
 async def run_query():
     global running, results
+    ip_locations = load_printers()
     running = True
     results = {}
 
     for ip,(printer_id,location,table_name,order) in ip_locations.items():
         try:
             printer_type, page_count, serial = await get_printer_data(ip)
+
+            cursor = db.cursor()
+
+            try:
+                page_count_db = int(page_count)
+            except:
+                page_count_db = None
+
+            cursor.execute("""
+                UPDATE nyomtatok 
+                SET tipus=%s, gyari_szam=%s, oldalszam=%s
+                WHERE azonosito=%s
+            """, (
+                printer_type,
+                serial,
+                page_count_db,
+                printer_id
+            ))
+
+            db.commit()
             
             # JSON kompatibilis típus
             if page_count is None:
@@ -129,7 +177,6 @@ async def run_query():
                 "ip": ip
             }
     running = False
-
 # Flask útvonalak
 @app.route("/")
 def index():

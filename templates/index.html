@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="static/js/app.js" defer></script>
+    <script src="static/js/modal.js"></script>
     <title>Nyomtató számlálók</title>
     
 </head>
@@ -12,13 +14,44 @@
     
     <h1>🖨️ Nyomtató monitor</h1>
     <button onclick="start()">Indítás</button>
+    <button onclick="openModal()">Hozzáadás</button>
+    <div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>Új nyomtató</h3>
+
+        <form >
+            <label>Azonosító</label>
+            <input type="text" name="azonosito" required>
+
+            <label>Gép helye</label>
+            <input type="text" name="gep_helye" required>
+
+            <label>IP</label>
+            <input type="text" name="ip" required>
+
+            <label>Típus</label>
+            <input type="text" name="tipus">
+
+            <label>Gyári szám</label>
+            <input type="text" name="gyari_szam">
+
+            <label>Üzemeltető</label>
+            <input type="text" name="uzemelteto">
+
+            <label>Cím</label>
+            <input type="text" name="cim">
+
+            <button type="submit">Mentés</button>
+        </form>
+    </div>
+    </div>
     <div class="progress">
         <div id="bar" class="bar"></div>
     </div>
     <div id="tables"></div>
     <br>
     <button class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
 </body>
 </html>
