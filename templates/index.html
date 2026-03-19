@@ -6,21 +6,58 @@
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="static/js/app.js" defer></script>
-    <script src="static/js/modal.js"></script>
+    <script src="static/js/modal.js" defer></script>
+    <!-- <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script> -->
     <title>Nyomtató számlálók</title>
     
 </head>
 <body>
     
     <h1>🖨️ Nyomtató monitor</h1>
-    <button onclick="start()">Indítás</button>
-    <button onclick="openModal()">Hozzáadás</button>
-    <div id="modal" class="modal">
+    <button onclick="start()">Nyomtatók frissítése</button>
+    <button onclick="openListModal()">Nyomtatók kezelése</button>
+
+    <div id="listModal" class="modal">
+    <div class="modal-content" style="width: 95%">
+        <span class="close" onclick="closeListModal()">&times;</span>
+        <h3>Nyomtatók</h3>
+
+        <div class="search-wrapper">
+            <input type="text" id="searchInput" placeholder="Keresés..." oninput="filterTable()">
+            <span class="clear-search" onmousedown="clearSearch(event)">×</span>
+        </div>
+
+        <table id="printerTable" style="width:100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+            <th>Azonosító</th>
+            <th>Hely</th>
+            <th>IP</th>
+            <th>Típus</th>
+            <th>Gyári szám</th>
+            <th>Üzemeltető</th>
+            <th>Cím</th>
+            <th>Művelet</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+        </table>
+
+        <div class="mfctnr">
+            <button class="mfbtn" onclick="openModal()">Nyomtató hozzáadása</button>
+            <div id="pagination"></div>
+        </div>
+        
+    </div>
+    </div>
+        <div id="modal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="closeModal()">&times;</span>
         <h3>Új nyomtató</h3>
 
-        <form >
+        <form id="addForm" onsubmit="return false;">
             <label>Azonosító</label>
             <input type="text" name="azonosito" required>
 

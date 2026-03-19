@@ -8,7 +8,7 @@ from pysnmp.hlapi.v3arch.asyncio import (
 )
 import threading
 # import json
-from flask import render_template
+from flask import render_template, request
 import mysql.connector
 
 db = mysql.connector.connect(
@@ -124,47 +124,66 @@ async def run_query():
         try:
             printer_type, page_count, serial = await get_printer_data(ip)
 
-            cursor = db.cursor()
-
+            # --- JSON kompatibilis ---
             try:
-                page_count_db = int(page_count)
+                page_count_int = int(page_count)
+                page_count_display = page_count_int
             except:
-                page_count_db = None
+                page_count_int = None
+                page_count_display = "Nem sikerült a lekérdezés"
 
-            cursor.execute("""
-                UPDATE nyomtatok 
-                SET tipus=%s, gyari_szam=%s, oldalszam=%s
-                WHERE azonosito=%s
-            """, (
-                printer_type,
-                serial,
-                page_count_db,
-                printer_id
-            ))
-
-            db.commit()
-            
-            # JSON kompatibilis típus
-            if page_count is None:
-                page_count = "Nem sikerült a lekérdezés"
-            else:
-                page_count = int(page_count)  # Counter32 -> int
-            
             if serial is None:
-                serial = "Nem sikerült a lekérdezés"
+                serial_display = "Nem sikerült a lekérdezés"
             else:
-                serial = str(serial)  # Counter32 vagy OctetString -> str
+                serial_display = str(serial)
 
+            # --- results MINDIG töltődik ---
             results[ip] = {
                 "id": printer_id,
                 "name": location,
                 "type": printer_type,
-                "pages": page_count,
-                "serial": serial,
+                "pages": page_count_display,
+                "serial": serial_display,
                 "table": table_name,
                 "order": order,
                 "ip": ip
             }
+
+            # --- DB LOGIKA KÜLÖN ---
+            if (
+                printer_type != "Nem sikerült a lekérdezés" and
+                serial_display != "Nem sikerült a lekérdezés" and
+                printer_type is not None and
+                serial_display is not None and
+                page_count_int is not None
+            ):
+                cursor = db.cursor(dictionary=True)
+
+                cursor.execute("""
+                    SELECT tipus, gyari_szam, oldalszam 
+                    FROM nyomtatok 
+                    WHERE azonosito=%s
+                """, (printer_id,))
+
+                row = cursor.fetchone()
+
+                if row:
+                    if not (
+                        row["tipus"] == printer_type and
+                        row["gyari_szam"] == serial_display and
+                        row["oldalszam"] == page_count_int
+                    ):
+                        cursor.execute("""
+                            UPDATE nyomtatok 
+                            SET tipus=%s, gyari_szam=%s, oldalszam=%s
+                            WHERE azonosito=%s
+                        """, (
+                            printer_type,
+                            serial_display,
+                            page_count_int,
+                            printer_id
+                        ))
+
         except Exception:
             results[ip] = {
                 "id": printer_id,
@@ -176,6 +195,8 @@ async def run_query():
                 "order": order,
                 "ip": ip
             }
+
+    db.commit()
     running = False
 # Flask útvonalak
 @app.route("/")
@@ -234,6 +255,82 @@ def download_all_xlsx():
     }
 
     return Response(output, headers=headers)
+
+@app.route("/add_printer", methods=["POST"])
+def add_printer():
+    try:
+        azonosito = request.form.get("azonosito")
+        gep_helye = request.form.get("gep_helye")
+        ip = request.form.get("ip")
+        tipus = request.form.get("tipus")
+        gyari_szam = request.form.get("gyari_szam")
+        uzemelteto = request.form.get("uzemelteto")
+        cim = request.form.get("cim")
+
+        cursor = db.cursor()
+
+        cursor.execute("""
+            INSERT INTO nyomtatok 
+            (azonosito, gep_helye, ip, tipus, gyari_szam, uzemelteto, cim)
+            VALUES (%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            azonosito,
+            gep_helye,
+            ip,
+            tipus,
+            gyari_szam,
+            uzemelteto,
+            cim
+        ))
+
+        db.commit()
+
+        return {"success": True}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.route("/get_printers")
+def get_printers():
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM nyomtatok")
+    return jsonify(cursor.fetchall())
+
+
+@app.route("/delete_printer/<azonosito>", methods=["DELETE"])
+def delete_printer(azonosito):
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM nyomtatok WHERE azonosito=%s", (azonosito,))
+    db.commit()
+    return {"success": True}
+
+
+@app.route("/update_printer", methods=["POST"])
+def update_printer():
+    data = request.json
+
+    cursor = db.cursor()
+    cursor.execute("""
+        UPDATE nyomtatok SET
+            gep_helye=%s,
+            ip=%s,
+            tipus=%s,
+            gyari_szam=%s,
+            uzemelteto=%s,
+            cim=%s
+        WHERE azonosito=%s
+    """, (
+        data["gep_helye"],
+        data["ip"],
+        data["tipus"],
+        data["gyari_szam"],
+        data["uzemelteto"],
+        data["cim"],
+        data["azonosito"]
+    ))
+
+    db.commit()
+    return {"success": True}
 
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=5000)

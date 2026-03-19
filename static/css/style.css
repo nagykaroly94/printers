@@ -16,12 +16,13 @@ table {
     margin-top: 20px;
     border-collapse: collapse;
     width: 100%;
-    table-layout: fixed;
+    table-layout: auto;
+    text-align: center;
 }
 th,td {
     border: 1px solid #334155;
     padding: 8px;
-    text-align: left;
+    text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -29,6 +30,11 @@ th,td {
 th {
     background: #1e293b;
 }
+
+.thfit {
+    width:fit-content;
+}
+
 hr.separator {
     border: none;
     height: 2px;
@@ -62,15 +68,66 @@ button {
     cursor: pointer;
 }
 input {
-    width: 100%;
+    width: stretch;
+    height: 2em;
     padding: 8px;
     margin-top: 5px;
-    margin-bottom: 10px;
     border-radius: 6px;
     border: 1px solid #334155;
     background: #1e293b;
     color: white;
 }
+
+.search-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+#searchInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 25px 5px 5px; /* jobbra a X helye */
+    border: none;              /* minden más border eltüntetése */
+    border-bottom: 2px solid #94a3b8; /* csak alsó vonal */
+    background: transparent;   /* háttér átlátszó */
+    font: inherit;
+    color: inherit;
+    outline: none;             /* fókusz körvonal eltüntetése */
+    transition: border-color 0.2s;
+}
+
+#searchInput:focus {
+    border-bottom-color: #2563eb; /* pl kék fókusz */
+}
+/* X gomb */
+.clear-search {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 2px;
+
+    display: none; /* alapból ne látszódjon */
+    align-items: center;   /* VERTIKÁLIS közép */
+    justify-content: center; /* horizontális közép */
+    cursor: pointer;
+    color: #94a3b8;
+    font-weight: bold;
+    font-size: 16px;
+    line-height: 1;
+    user-select: none;
+    padding: 0 5px;
+}
+
+/* csak fókuszkor jelenjen meg */
+#searchInput:focus + .clear-search {
+    display: flex; /* flex legyen, ne block */
+}
+
+/* hover */
+.clear-search:hover {
+    color: #ef4444;
+}
+
 label {
     font-size: 14px;
 }
@@ -79,7 +136,6 @@ label {
 .modal {
     display: none;
     position: fixed;
-    z-index: 10;
     left: 0; top: 0;
     width: 100%; height: 100%;
     background: rgba(0,0,0,0.6);
@@ -94,8 +150,98 @@ label {
     border: 1px solid #334155;
 }
 
+.modal button {
+    background: #2563eb;
+    border: none;
+    padding: 10px 20px;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 1em;
+}
+
+.modal button:hover {
+    background-color: #1e40af;
+}
+
 .close {
     float: right;
     cursor: pointer;
     font-size: 20px;
+}
+
+#printerTable th, #printerTable td {
+    border: 1px solid #334155;
+    padding: 8px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+}
+
+#listModal .modal-content {
+    overflow-x: auto;
+}
+
+.mfctnr {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.mfctnr button {
+    background-color: #2563eb; /* kék */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin: 0 3px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.mfctnr button:disabled {
+    background-color: #94a3b8; /* szürke */
+    cursor: default;
+}
+
+.mfctnr button:not(:disabled):hover {
+    background-color: #1e40af; /* sötétebb kék */
+}
+
+.mfinput {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+}
+
+/* disabled állapot NE legyen halvány */
+.mfinput:disabled {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+}
+
+/* fókusz se látszódjon */
+.mfinput:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.mfinput:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.1);
 }
