@@ -133,6 +133,73 @@ label {
 }
 
 /* MODAL */
+.mfinput {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+}
+
+/* Minimalista select, betű fehér */
+.mfselect {
+    border: none;
+    background: transparent; /* cella átlátszó */
+    color: white;            /* betű fehér */
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+    appearance: none;        /* natív nyíl minimalizálása */
+}
+
+/* disabled állapot */
+.mfselect:disabled {
+    color: white;
+    background: transparent;
+}
+
+/* fókusz se látszódjon */
+.mfselect:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* legördülő lista stílusa (option) */
+.mfselect option {
+    background-color: black; /* legördülő háttér fekete */
+    color: white;            /* legördülő betű fehér */
+}
+
+/* disabled állapot NE legyen halvány */
+.mfinput:disabled {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+}
+
+/* fókusz se látszódjon */
+.mfinput:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.mfinput:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -158,6 +225,25 @@ label {
     border-radius: 6px;
     cursor: pointer;
     margin-top: 1em;
+}
+
+.modal label {
+    display: block;
+    margin-top: 10px;
+    margin-right: auto;
+}
+
+.modalinput{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 5px 25px 5px 5px; /* jobbra a X helye */
+    border: none;              /* minden más border eltüntetése */
+    border-bottom: 2px solid #94a3b8; /* csak alsó vonal */
+    background: transparent;   /* háttér átlátszó */
+    font: inherit;
+    color: inherit;
+    outline: none;             /* fókusz körvonal eltüntetése */
+    transition: border-color 0.2s;
 }
 
 .modal button:hover {
@@ -209,39 +295,4 @@ label {
 
 .mfctnr button:not(:disabled):hover {
     background-color: #1e40af; /* sötétebb kék */
-}
-
-.mfinput {
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    color: inherit;
-    box-sizing: border-box;
-    min-width: 0;
-    outline: none;
-}
-
-/* disabled állapot NE legyen halvány */
-.mfinput:disabled {
-    border: none;
-    background: transparent;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    color: inherit;
-    box-sizing: border-box;
-    min-width: 0;
-    outline: none;
-}
-
-/* fókusz se látszódjon */
-.mfinput:focus {
-    outline: none;
-    box-shadow: none;
-}
-
-.mfinput:not(:disabled):hover {
-    background: rgba(255, 255, 255, 0.1);
 }

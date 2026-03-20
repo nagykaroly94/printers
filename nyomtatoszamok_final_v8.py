@@ -7,45 +7,45 @@ from pysnmp.hlapi.v3arch.asyncio import (
     ObjectType, ObjectIdentity, get_cmd
 )
 import threading
-# import json
 from flask import render_template, request
 import mysql.connector
-
-db = mysql.connector.connect(
-    host="localhost",
-    user="nagykar",
-    password="714dcakK!",
-    database="nyomtat"
-)
+import configparser
 
 app = Flask(__name__)
 
 results = {}
 running = False
 
+def get_db_connection():
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+
+    db = mysql.connector.connect(
+        host=config["mysql"]["host"],
+        user=config["mysql"]["user"],
+        password=config["mysql"]["password"],
+        database=config["mysql"]["database"]
+    )
+
+    return db
+
 # Nyomtatók lekérdezése MySQL-ből
 def load_printers():
+    db = get_db_connection()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT azonosito, gep_helye, ip, tabla, sorrend FROM nyomtatok")
+    cursor.execute("""
+        SELECT azonosito, gep_helye, ip, tipus, gyari_szam, uzemelteto, cim
+        FROM nyomtatok
+    """)
     rows = cursor.fetchall()
 
     printers = {}
     for r in rows:
-        printers[r["ip"]] = (
-            r["azonosito"],
-            r["gep_helye"],
-            r["tabla"],
-            r["sorrend"]
-        )
+        printers[r["ip"]] = r  # itt már az egész sor JSON-szerű objektumként
 
     return printers
 
 ip_locations = load_printers()
-
-# # Nyomtatók lekérdezése JSON file-ból
-# with open("config/printers.json", "r", encoding="utf-8") as f:
-#     ip_locations = json.load(f)
-
 # SNMP lekérdezés
 async def snmp_get(ip, oid):
     transport = await UdpTransportTarget.create((ip,161), timeout=2, retries=1)
@@ -112,7 +112,6 @@ async def get_printer_data(ip):
     serial = serial_result.prettyPrint() if serial_result is not None else "Nem sikerült a lekérdezés"
 
     return printer_type, pages, serial
-
 # Lekérdezés futtatása
 async def run_query():
     global running, results
@@ -120,7 +119,11 @@ async def run_query():
     running = True
     results = {}
 
-    for ip,(printer_id,location,table_name,order) in ip_locations.items():
+    for ip, r in ip_locations.items():
+        printer_id = r["azonosito"]
+        location = r["gep_helye"]
+        uzemelteto = r.get("uzemelteto", "")
+        cim = r.get("cim", "")
         try:
             printer_type, page_count, serial = await get_printer_data(ip)
 
@@ -141,12 +144,12 @@ async def run_query():
             results[ip] = {
                 "id": printer_id,
                 "name": location,
+                "ip": ip,
                 "type": printer_type,
-                "pages": page_count_display,
                 "serial": serial_display,
-                "table": table_name,
-                "order": order,
-                "ip": ip
+                "pages": page_count_display,
+                "cim": cim,
+                "uzemelteto": uzemelteto
             }
 
             # --- DB LOGIKA KÜLÖN ---
@@ -157,6 +160,7 @@ async def run_query():
                 serial_display is not None and
                 page_count_int is not None
             ):
+                db = get_db_connection()
                 cursor = db.cursor(dictionary=True)
 
                 cursor.execute("""
@@ -191,8 +195,8 @@ async def run_query():
                 "type": "Nem sikerült a lekérdezés",
                 "pages": "Nem sikerült a lekérdezés",
                 "serial": "Nem sikerült a lekérdezés",
-                "table": table_name,
-                "order": order,
+                "cim": cim,
+                "uzemelteto": uzemelteto,
                 "ip": ip
             }
 
@@ -215,23 +219,36 @@ def start():
 def status():
     return jsonify({"results": results, "total": len(ip_locations), "running": running})
 
-@app.route("/printer_pages/<table_name>.xlsx")
+@app.route("/printer_pages/<path:table_name>.xlsx")
 def download_table_xlsx(table_name):
     wb = Workbook()
     ws = wb.active
     ws.title = "Nyomtatók"
+
     ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám"])
+
     for r in results.values():
-        if r.get("table") == table_name:
-            ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"]])
+        company = r.get("uzemelteto", "Nincs üzemeltető")
+        address = r.get("cim", "Nincs cím")
+        key = f"{company} - {address}"
+
+        if key == table_name:
+            ws.append([
+                r["id"],
+                r["name"],
+                r["ip"],
+                r["type"],
+                r["serial"],
+                r["pages"]
+            ])
+
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
 
     headers = {
         "Content-Disposition": f"attachment; filename={table_name}.xlsx",
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "X-Content-Type-Options": "nosniff"  # Chrome biztonságosabbnak látja
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     }
 
     return Response(output, headers=headers)
@@ -241,9 +258,9 @@ def download_all_xlsx():
     wb = Workbook()
     ws = wb.active
     ws.title = "Nyomtatók"
-    ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám","Táblázat"])
+    ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám","Üzemeltető","Cím"])
     for r in results.values():
-        ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"], r["table"]])
+        ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"], r["uzemelteto"], r["cim"]])
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -267,6 +284,7 @@ def add_printer():
         uzemelteto = request.form.get("uzemelteto")
         cim = request.form.get("cim")
 
+        db = get_db_connection()
         cursor = db.cursor()
 
         cursor.execute("""
@@ -292,23 +310,24 @@ def add_printer():
 
 @app.route("/get_printers")
 def get_printers():
+    db = get_db_connection()
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT * FROM nyomtatok")
     return jsonify(cursor.fetchall())
 
-
 @app.route("/delete_printer/<azonosito>", methods=["DELETE"])
 def delete_printer(azonosito):
+    db = get_db_connection()
     cursor = db.cursor()
     cursor.execute("DELETE FROM nyomtatok WHERE azonosito=%s", (azonosito,))
     db.commit()
     return {"success": True}
 
-
 @app.route("/update_printer", methods=["POST"])
 def update_printer():
     data = request.json
 
+    db = get_db_connection()
     cursor = db.cursor()
     cursor.execute("""
         UPDATE nyomtatok SET
