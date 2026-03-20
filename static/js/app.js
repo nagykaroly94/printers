@@ -80,3 +80,17 @@ function update() {
         }
     });
 }
+
+function saveMonthly(){
+    fetch("/save_monthly", {
+        method: "POST"
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.success){
+            alert("Mentés kész");
+        } else {
+            alert("Hiba: " + data.error);
+        }
+    })
+}

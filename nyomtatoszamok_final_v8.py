@@ -203,6 +203,19 @@ async def run_query():
     db.commit()
     running = False
 # Flask útvonalak
+def save_monthly_snapshot():
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        INSERT INTO nyomtato_havi_allas (nyomtato_id, uzemelteto, cim, datum, oldalszam)
+        SELECT azonosito, uzemelteto, cim, DATE_FORMAT(CURDATE(), '%Y-%m-01'), oldalszam
+        FROM nyomtatok
+        ON DUPLICATE KEY UPDATE oldalszam = VALUES(oldalszam), rogzitve = NOW(), uzemelteto = VALUES(uzemelteto), cim = VALUES(cim);
+    """)
+
+    db.commit()
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -350,6 +363,74 @@ def update_printer():
 
     db.commit()
     return {"success": True}
+
+@app.route("/save_monthly", methods=["POST"])
+def save_monthly():
+    try:
+        save_monthly_snapshot()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.route("/get_full_diff")
+def getfulldiff():
+    honapok = {
+        "January": "Január",
+        "February": "Február",
+        "March": "Március",
+        "April": "Április",
+        "May": "Május",
+        "June": "Június",
+        "July": "Július",
+        "August": "Augusztus",
+        "September": "Szeptember",
+        "October": "Október",
+        "November": "November",
+        "December": "December"
+    }
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    
+
+    cursor.execute("""
+        SELECT 
+            curr.nyomtato_id, 
+            curr.uzemelteto, 
+            curr.cim, 
+            curr.honap_nev, 
+            curr.oldalszam AS aktualis, 
+            prev.oldalszam AS elozo, 
+            (curr.oldalszam - prev.oldalszam) AS kulonbseg 
+        FROM 
+            nyomtato_havi_allas curr 
+            LEFT JOIN nyomtato_havi_allas prev ON curr.nyomtato_id = prev.nyomtato_id 
+            AND prev.datum = DATE_SUB(curr.datum, INTERVAL 1 MONTH) 
+        WHERE 
+            curr.honap_nev LIKE MONTHNAME(
+                CURDATE()
+            ) 
+        ORDER BY 
+            `uzemelteto`, 
+            `cim`;
+    """)
+    rows = cursor.fetchall()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Nyomtatók"
+    ws.append(["Nyomtató ID","Üzemeltető","Cím","Aktuális hónap","Aktuális nyomatszám","Előző nyomatszám","Különbség"])
+    for r in rows:
+        ws.append([r["nyomtato_id"], r["uzemelteto"], r["cim"], honapok.get(r["honap_nev"]), r["aktualis"], r["elozo"], r["kulonbseg"]])
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    headers = {
+        "Content-Disposition": "attachment; filename=Tárgy havi nyomatszámok.xlsx",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "X-Content-Type-Options": "nosniff"  # Chrome biztonságosabbnak látja
+    }
+
+    return Response(output, headers=headers)
 
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=5000)
