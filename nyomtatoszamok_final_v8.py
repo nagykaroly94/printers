@@ -10,6 +10,7 @@ import threading
 from flask import render_template, request
 import mysql.connector
 import configparser
+import os
 
 app = Flask(__name__)
 
@@ -17,8 +18,12 @@ results = {}
 running = False
 
 def get_db_connection():
+    # Absolút útvonal a config.ini-hez
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_dir, "config.ini")
+
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read(config_path)
 
     db = mysql.connector.connect(
         host=config["mysql"]["host"],
