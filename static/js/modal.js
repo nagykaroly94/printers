@@ -346,6 +346,7 @@ function editRow(id, btn) {
                 inputs.forEach(input => input.disabled = true);
                 btn.textContent = "🔧";
                 btn.dataset.editing = "false";
+                renderTable(); // frissítjük a táblázatot, hogy látszódjon a változás
                 
             } else {
                 alert("Hiba");

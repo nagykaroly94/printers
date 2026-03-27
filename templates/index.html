@@ -12,14 +12,22 @@
 </head>
 <body>
     
-    <h1>🖨️ Nyomtató monitor</h1>
-    <button onclick="start()">Nyomtatók frissítése</button>
-    <button onclick="openListModal()">Nyomtatók kezelése</button>
-    <button onclick="saveMonthly()">Oldalszám rögzítése</button>
-    <button onclick="window.open('/get_full_diff')">Aktuális oldalszámok lekérdezése</button>
-    <button onclick="openManageModal('cim')">Címek kezelése</button>
-    <button onclick="openManageModal('uzemelteto')">Üzemeltetők kezelése</button>
-    <button onclick="openRelationsModal(1)">Kapcsolatok kezelése</button>
+    <h1>🖨️ Nyomtató monitor</h1>  
+    <div class="hamburger" onclick="toggleMenu(this)">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    
+    <div class="menu" id="hamburgerMenu">
+        <button onclick="start()">Nyomtatók frissítése</button>
+        <button onclick="openListModal()">Nyomtatók kezelése</button>
+        <button onclick="saveMonthly()">Oldalszám rögzítése</button>
+        <button onclick="window.open('/get_full_diff')">Aktuális oldalszámok lekérdezése</button>
+        <button onclick="openManageModal('cim')">Címek kezelése</button>
+        <button onclick="openManageModal('uzemelteto')">Üzemeltetők kezelése</button>
+        <button onclick="openRelationsModal(1)">Kapcsolatok kezelése</button>
+    </div>
     
     <div id="listModal" class="modal">
         <div class="modal-content" style="width: 95%">

@@ -158,6 +158,7 @@ label {
     min-width: 0;
     outline: none;
     appearance: none;
+    width: 100%;
 }
 
 /* disabled állapot */
@@ -325,4 +326,74 @@ label {
 
 .mfctnr #manageModalPagination button:not(:disabled):hover {
     background-color: #1e40af; /* sötétebb kék */
+}
+
+/* Hamburger ikon */
+.hamburger {
+    display: inline-block;
+    cursor: pointer;
+    padding: 15px;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1001;
+}
+
+.hamburger div {
+    width: 30px;
+    height: 4px;
+    background-color: aliceblue;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+
+/* Menü stílus */
+.menu {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #333;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
+
+.menu button {
+    display: block;
+    width: 80%;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 1em;
+    font-size: 16px;
+    text-align: left;
+    transition: 0.3s;
+}
+
+.menu button:hover {
+    background-color: #ddd;
+}
+
+/* Menü nyitott állapot animációhoz */
+.menu.open {
+    width: 250px;
+}
+
+/* Hamburger ikon animációja (X-re váltás) */
+.hamburger.open div:nth-child(1) {
+    transform: rotate(-45deg) translate(-7px, 7px);
+}
+.hamburger.open div:nth-child(2) {
+    opacity: 0;
+}
+.hamburger.open div:nth-child(3) {
+    transform: rotate(45deg) translate(-7px, -7px);
 }
