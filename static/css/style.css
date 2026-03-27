@@ -11,6 +11,7 @@ button {
     color: white;
     border-radius: 6px;
     cursor: pointer;
+    margin-top: 1em;
 }
 table {
     margin-top: 20px;
@@ -146,17 +147,17 @@ label {
 }
 
 /* Minimalista select, betű fehér */
-.mfselect {
+.mfselect{
     border: none;
-    background: transparent; /* cella átlátszó */
-    color: white;            /* betű fehér */
+    background: transparent;
+    color: white;
     padding: 0;
     margin: 0;
     font: inherit;
     box-sizing: border-box;
     min-width: 0;
     outline: none;
-    appearance: none;        /* natív nyíl minimalizálása */
+    appearance: none;
 }
 
 /* disabled állapot */
@@ -215,6 +216,8 @@ label {
     width: 400px;
     border-radius: 10px;
     border: 1px solid #334155;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 .modal button {
@@ -266,7 +269,7 @@ label {
     
 }
 
-#listModal .modal-content {
+#listModal, #manageModal .modal-content {
     overflow-x: auto;
 }
 
@@ -294,5 +297,32 @@ label {
 }
 
 .mfctnr button:not(:disabled):hover {
+    background-color: #1e40af; /* sötétebb kék */
+}
+
+.mfctnr {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.mfctnr #manageModalPagination button {
+    background-color: #2563eb; /* kék */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin: 0 3px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.mfctnr #manageModalPagination button:disabled {
+    background-color: #94a3b8; /* szürke */
+    cursor: default;
+}
+
+.mfctnr #manageModalPagination button:not(:disabled):hover {
     background-color: #1e40af; /* sötétebb kék */
 }

@@ -8,10 +8,6 @@ let manageData = [];
 let managePage = 1;
 let manageRowsPerPage = 5;
 
-let currentUzemId = null;
-let relationsData = [];
-let allRelations = [];
-
 function openModal() {
     document.getElementById("modal").style.display = "block";
 }
@@ -40,115 +36,70 @@ async function getOptions(url) {
     return await res.json();
 }
 
-function populateSelect(selectElem, options, valueField, textField, selectedValue = null) {
-    if (!selectElem) return;
-
-    const wasDisabled = selectElem.disabled; // remember disabled state
-    selectElem.disabled = false;              // enable temporarily
-
+function populateSelect(selectElem, options, valueField, selectedValue) {
+    if (!selectElem) return; // védelem ha nincs elem
+    
     selectElem.innerHTML = `<option value="">Nincs megadva</option>`;
-
+    
     options.forEach(opt => {
         const value = opt[valueField];
-        const text = opt[textField] || value;
-
+        
         const option = document.createElement("option");
         option.value = value;
-        option.textContent = text;
-
+        option.textContent = value;
+        
+        if (value === selectedValue) {
+            option.selected = true;
+        }
+        
         selectElem.appendChild(option);
     });
-    console.log(selectedValue)
-    if (selectedValue !== null) {
-        console.log(selectedValue)
-        selectElem.value = String(selectedValue);
-    }
-
-    selectElem.disabled = wasDisabled; // restore disabled state
 }
 
 async function renderTable() {
     const tbody = document.querySelector("#printerTable tbody");
     tbody.innerHTML = "";
-
-    // Lekérjük az összes üzemeltetőt egyszer
-    const uzemeltetoOptions = await getOptions("/api/uzemelteto");
-
-    let start = (currentPage-1) * rowsPerPage;
+    
+    // Lekérjük az összes select opciót egyszer
+    const [uzemelteto, cim] = await Promise.all([
+        getOptions("/api/uzemelteto"), 
+        getOptions("/api/cim")
+    ]);
+    
+    let start = (currentPage-1)*rowsPerPage;
     let end = start + rowsPerPage;
-    let pageData = printers.slice(start, end);
-
-for (const p of pageData) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${p.azonosito}</td>
-        <td><input class="mfinput" value="${p.gep_helye}" disabled></td>
-        <td><input class="mfinput" value="${p.ip}" disabled></td>
-        <td><input class="mfinput" value="${p.tipus || ""}" disabled></td>
-        <td><input class="mfinput" value="${p.gyari_szam || ""}" disabled></td>
-        <td><select class="mfselect uzemelteto" disabled></select></td>
-        <td><select class="mfselect cim" disabled></select></td>
-        <td class="thfit">
-            <button onclick="editRow('${p.azonosito}', this)">🔧</button>
-            <button onclick="deleteRow('${p.azonosito}')">❌</button>
-        </td>
-    `;
-    tbody.appendChild(tr);
-
-    const uzemSelect = tr.querySelector(".uzemelteto");
-    const cimSelect = tr.querySelector(".cim");
-
-    // ——— Determine selected IDs dynamically ———
-    let selectedUzemId = null;
-    if (p.uzemelteto_id !== undefined) {
-        selectedUzemId = p.uzemelteto_id;
-    } else if (p.uzemelteto) {
-        // Match name to ID
-        const match = uzemeltetoOptions.find(u => u.uzemelteto === p.uzemelteto);
-        selectedUzemId = match ? match.id : null;
-    }
-
-    // Fill uzemelteto select
-    populateSelect(uzemSelect, uzemeltetoOptions, "id", "uzemelteto", selectedUzemId);
-
-    // Fill cim select only if there’s an uzemelteto
-    if (selectedUzemId !== null) {
-        const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzemId}`);
-
-        let selectedCimId = null;
-        if (p.cim_id !== undefined) {
-            selectedCimId = p.cim_id;
-        } else if (p.cim) {
-            const match = relatedCims.find(c => c.cim === p.cim);
-            selectedCimId = match ? match.cim_id : null;
-        }
-
-        populateSelect(cimSelect, relatedCims, "cim_id", "cim", selectedCimId);
-    }
-
-    // Update cim select when uzemelteto changes
-    uzemSelect.addEventListener("change", async () => {
-        const selectedUzem = parseInt(uzemSelect.value);
-        if (isNaN(selectedUzem)) {
-            populateSelect(cimSelect, [], "cim_id", "cim");
-            return;
-        }
-        const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzem}`);
-        populateSelect(cimSelect, relatedCims, "cim_id", "cim");
+    let pageData = printers.slice(start,end);
+    
+    pageData.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${p.azonosito}</td>
+            <td><input class="mfinput" value="${p.gep_helye}" disabled></td>
+            <td><input class="mfinput" value="${p.ip}" disabled></td>
+            <td><input class="mfinput" value="${p.tipus || ""}" disabled></td>
+            <td><input class="mfinput" value="${p.gyari_szam || ""}" disabled></td>
+            <td><select class="mfselect uzemelteto" disabled></select></td>
+            <td><select class="mfselect cim" disabled></select></td>
+            <td class="thfit">
+                <button onclick="editRow('${p.azonosito}', this)">🔧</button>
+                <button onclick="deleteRow('${p.azonosito}')">❌</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        
+        // Feltöltjük a selecteket az adatbázisból
+        populateSelect(tr.querySelector(".uzemelteto"), uzemelteto, "uzemelteto", p.uzemelteto);
+        populateSelect(tr.querySelector(".cim"), cim, "cim", p.cim);
     });
-}
-
+    
     renderPagination();
 }
 
-// Segédfüggvény a fetchhez
+// Fetch helper
 async function getOptions(url) {
     const res = await fetch(url);
-    if (!res.ok) {
-        console.error("Hiba a lekérés során:", res.status, res.statusText);
-        return [];
-    }
     const data = await res.json();
+    console.log("Fetch data:", data);  // ← ide teszt
     return data;
 }
 
@@ -177,14 +128,14 @@ async function openManageModal(type) {
 function renderManageModal() {
     const tbody = document.getElementById("manageModalTable");
     tbody.innerHTML = "";
-    
+
     let start = (managePage - 1) * manageRowsPerPage;
     let end = start + manageRowsPerPage;
     let pageData = manageData.slice(start, end);
-    
+
     pageData.forEach((item, index) => { // ← index most definiálva
         const value = manageType === "cim" ? item.cim : item.uzemelteto;
-        
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${value}</td>
@@ -195,7 +146,7 @@ function renderManageModal() {
         `;
         tbody.appendChild(tr);
     });
-    
+
     renderManagePagination();
 }
 // Pagination
@@ -317,21 +268,13 @@ function editRow(id, btn) {
         p.ip = inputs[1].value;
         p.tipus = inputs[2].value;
         p.gyari_szam = inputs[3].value;
-        p.uzemelteto_id = inputs[4].value;
-        p.cim_id = inputs[5].value;
+        p.uzemelteto = inputs[4].value;
+        p.cim = inputs[5].value;
         
         fetch("/update_printer", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                azonosito: p.azonosito,
-                gep_helye: inputs[0].value,
-                ip: inputs[1].value,
-                tipus: inputs[2].value,
-                gyari_szam: inputs[3].value,
-                uzemelteto: inputs[4].options[inputs[4].selectedIndex].text,
-                cim: inputs[5].options[inputs[5].selectedIndex].text
-            })
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify(p)
         })
         .then(r=>r.json())
         .then(r=>{
@@ -358,7 +301,7 @@ function editManageRow(index, btn) {
     const row = btn.closest("tr");
     const input = row.querySelector("td input, td"); // a cellát szerkesztjük
     const editing = btn.dataset.editing === "true";
-    
+
     if (!editing) {
         // szerkesztés indítása
         const value = input.textContent || input.value;
@@ -368,12 +311,12 @@ function editManageRow(index, btn) {
     } else {
         // mentés
         const newValue = row.querySelector("input").value;
-        
+
         // frissítjük a tömböt
         const item = manageData[index];
         if (manageType === "cim") item.cim = newValue;
         else item.uzemelteto = newValue;
-        
+
         fetch(manageType === "cim" ? "/api/update_cim" : "/api/update_uzemelteto", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -396,10 +339,10 @@ function editManageRow(index, btn) {
 
 function deleteManageRow(index) {
     if (!confirm("Biztos törlöd?")) return;
-    
+
     const item = manageData[index];
     const url = manageType === "cim" ? "/api/delete_cim" : "/api/delete_uzemelteto";
-    
+
     fetch(url, {
         method: "POST", // vagy DELETE, ha a backend támogatja
         headers: { "Content-Type": "application/json" },
@@ -424,122 +367,6 @@ function deleteRow(id){
     fetch("/delete_printer/"+id, {method:"DELETE"})
     .then(r=>r.json())
     .then(r=>{ if(r.success){ printers = printers.filter(p=>p.azonosito!==id); renderTable(); } else alert("Hiba"); });
-}
-
-// Modal megnyitása és adatok betöltése
-async function openRelationsModal() {
-    document.getElementById("relationsModal").style.display = "block";
-    
-    // Üzemeltetők betöltése
-    const uzemRes = await fetch("/api/list_uzemelteto");
-    const uzemData = await uzemRes.json();
-    const uzemSelect = document.getElementById("newRelationUzem");
-    uzemSelect.innerHTML = `<option value="">Válassz üzemeltetőt...</option>`;
-    uzemData.forEach(u => {
-        const opt = document.createElement("option");
-        opt.value = u.id;
-        opt.textContent = u.uzemelteto;
-        uzemSelect.appendChild(opt);
-    });
-    
-    // Címek betöltése
-    const cimRes = await fetch("/api/list_cim");
-    const cimData = await cimRes.json();
-    const cimSelect = document.getElementById("newRelationCim");
-    cimSelect.innerHTML = `<option value="">Válassz címet...</option>`;
-    cimData.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c.id;
-        opt.textContent = c.cim;
-        cimSelect.appendChild(opt);
-    });
-    
-    await loadRelations(); // meglévő kapcsolatok betöltése
-}
-
-// Modal bezárása
-function closeRelationsModal() {
-    document.getElementById("relationsModal").style.display = "none";
-}
-
-// Meglévő kapcsolatok betöltése
-async function loadRelations() {
-    const res = await fetch("/api/get_relations");
-    relationsData = await res.json();
-    
-    const tbody = document.getElementById("relationTableBody");
-    tbody.innerHTML = "";
-    
-    relationsData.forEach(rel => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${rel.uzemelteto}</td>
-            <td>${rel.cim}</td>
-            <td>
-                <button onclick="deleteRelation(${rel.id})">❌</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Új kapcsolat mentése
-async function saveNewRelation() {
-    const uzem_id = document.getElementById("newRelationUzem").value;
-    const cim_id = document.getElementById("newRelationCim").value;
-    
-    if(!uzem_id || !cim_id) return alert("Mindkét értéket ki kell választani!");
-    
-    await fetch("/api/add_relation", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({uzemelteto_id: uzem_id, cim_id: cim_id})
-    });
-    
-    await loadRelations();
-}
-
-// Kapcsolat törlése
-async function deleteRelation(rel_id) {
-    if(!confirm("Biztos törlöd?")) return;
-    
-    await fetch("/api/delete_relation", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({relation_id: rel_id})
-    });
-    
-    await loadRelations();
-}
-
-// Kapcsolat szerkesztése (cím módosítása)
-async function editRelation(relation_id, btn) {
-    const row = btn.closest("tr");
-    const cell = row.querySelector("td");
-    const editing = btn.dataset.editing === "true";
-    
-    if(!editing) {
-        const currentValue = cell.textContent;
-        cell.innerHTML = `<input type="text" value="${currentValue}">`;
-        btn.textContent = "💾";
-        btn.dataset.editing = "true";
-    } else {
-        const newValue = cell.querySelector("input").value;
-        const cimRes = await fetch("/api/list_cim");
-        const cimData = await cimRes.json();
-        const newCim = cimData.find(c => c.cim === newValue);
-        if(!newCim) return alert("Érvénytelen cím!");
-        
-        await fetch("/api/update_relation", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({relation_id, new_cim_id: newCim.id})
-        });
-        
-        cell.textContent = newValue;
-        btn.textContent = "💾";
-        btn.dataset.editing = "false";
-    }
 }
 
 document.getElementById("addForm").addEventListener("submit", function(e) {

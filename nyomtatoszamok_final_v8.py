@@ -12,10 +12,12 @@ import mysql.connector
 import configparser
 import os
 
+
 app = Flask(__name__)
 
 results = {}
 running = False
+
 
 def get_db_connection():
     # Absolút útvonal a config.ini-hez
@@ -436,6 +438,223 @@ def getfulldiff():
     }
 
     return Response(output, headers=headers)
+
+@app.route('/api/cim')
+def cim():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM cim")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)  # [{id: 1, cim: "4200 Hajdúszoboszló ..."}, ...]
+
+@app.route('/api/uzemelteto')
+def uzemelteto():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM uzemelteto")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)  # [{id: 1, uzemelteto: "Kerekes Kft."}, ...]
+
+@app.route('/api/add_cim', methods=['POST'])
+def add_cim():
+    data = request.json
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO cim (cim) VALUES (%s)", (data['value'],))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"status": "ok"}
+
+
+@app.route('/api/add_uzemelteto', methods=['POST'])
+def add_uzemelteto():
+    data = request.json
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO uzemelteto (uzemelteto) VALUES (%s)", (data['value'],))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"status": "ok"}
+
+@app.route('/api/list_uzemelteto', methods=['GET'])
+def list_uzemelteto():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM uzemelteto")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
+
+@app.route('/api/list_cim', methods=['GET'])
+def list_cim():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM cim")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
+
+
+@app.route("/api/delete_cim", methods=["POST"])
+def delete_cim():
+    data = request.get_json()
+    id_to_delete = data.get("id")
+    if not id_to_delete:
+        return jsonify({"success": False, "error": "Hiányzó ID"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM cim WHERE id = %s", (id_to_delete,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/delete_uzemelteto", methods=["POST"])
+def delete_uzemelteto():
+    data = request.get_json()
+    id_to_delete = data.get("id")
+    if not id_to_delete:
+        return jsonify({"success": False, "error": "Hiányzó ID"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM uzemelteto WHERE id = %s", (id_to_delete,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    
+
+@app.route("/api/update_cim", methods=["POST"])
+def update_cim():
+    data = request.get_json()
+    id_to_update = data.get("id")
+    new_value = data.get("value")
+    
+    if not id_to_update or new_value is None:
+        return jsonify({"success": False, "error": "Hiányzó adat"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE cim SET cim = %s WHERE id = %s", (new_value, id_to_update))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/update_uzemelteto", methods=["POST"])
+def update_uzemelteto():
+    data = request.get_json()
+    id_to_update = data.get("id")
+    new_value = data.get("value")
+    
+    if not id_to_update or new_value is None:
+        return jsonify({"success": False, "error": "Hiányzó adat"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE uzemelteto SET uzemelteto = %s WHERE id = %s", (new_value, id_to_update))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/get_relations")
+def get_all_relations():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT uc.id AS relation_id, u.id AS uzemelteto_id, u.uzemelteto,
+               c.id AS cim_id, c.cim
+        FROM uzemelteto_cim uc
+        JOIN uzemelteto u ON uc.uzemelteto_id = u.id
+        JOIN cim c ON uc.cim_id = c.id
+        ORDER BY u.uzemelteto, c.cim
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
+
+@app.route("/api/add_relation", methods=["POST"])
+def add_relation():
+    data = request.json
+    uzem_id = data.get("uzemelteto_id")
+    cim_id = data.get("cim_id")
+    if not uzem_id or not cim_id:
+        return jsonify({"success": False, "error": "Hiányzó adat"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT IGNORE INTO uzemelteto_cim (uzemelteto_id, cim_id) VALUES (%s,%s)",
+            (uzem_id, cim_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/delete_relation", methods=["POST"])
+def delete_relation():
+    data = request.json
+    relation_id = data.get("relation_id")
+    if not relation_id:
+        return jsonify({"success": False, "error": "Hiányzó adat"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM uzemelteto_cim WHERE id=%s", (relation_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/get_relations_by_uzem/<int:uzem_id>")
+def get_relations_by_uzem(uzem_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT uc.id AS relation_id, c.id AS cim_id, c.cim
+        FROM uzemelteto_cim uc
+        JOIN cim c ON uc.cim_id = c.id
+        WHERE uc.uzemelteto_id = %s
+        ORDER BY c.cim
+    """, (uzem_id,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
 
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=5000)

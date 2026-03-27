@@ -10,7 +10,7 @@ function update() {
     .then(data => {
         let tables_div = document.getElementById("tables");
         tables_div.innerHTML = "";
-
+        
         // csoportosítás cég + cím szerint
         let grouped = {};
         for (let ip in data.results) {
@@ -18,11 +18,11 @@ function update() {
             let company = r.uzemelteto || "Nincs üzemeltető";
             let address = r.cim || "Nincs cím";
             let key = `${company} - ${address}`;  // cég + cím kulcs
-
+            
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(r);
         }
-
+        
         // táblázatok létrehozása cég+cím szerint
         Object.keys(grouped).forEach(key => {
             let table = document.createElement("table");
@@ -36,7 +36,7 @@ function update() {
                     <th>Oldalszám</th>
                 </tr>
             `;
-
+            
             grouped[key].forEach(r => {
                 table.innerHTML += `
                     <tr>
@@ -49,11 +49,11 @@ function update() {
                     </tr>
                 `;
             });
-
+            
             // blokk fejléc
             let h2 = document.createElement("h2");
             h2.textContent = key; // cég + cím
-
+            
             // letöltés gomb
             let btn = document.createElement("button");
             btn.textContent = "Táblázat letöltés";
@@ -61,20 +61,20 @@ function update() {
             btn.onclick = function() {
                 window.location.href = `/printer_pages/${encodeURIComponent(key)}.xlsx`;
             };
-
+            
             tables_div.appendChild(h2);
             tables_div.appendChild(btn);
             tables_div.appendChild(table);
-
+            
             let hr = document.createElement("hr");
             hr.className = "separator";
             tables_div.appendChild(hr);
         });
-
+        
         // progress bar frissítés
         let percent = Math.round(Object.keys(data.results).length / data.total * 100);
         document.getElementById("bar").style.width = percent + "%";
-
+        
         if(data.running === false) {
             clearInterval(timer);
         }

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-
+    
     <meta charset="utf-8">
     <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -17,70 +17,120 @@
     <button onclick="openListModal()">Nyomtatók kezelése</button>
     <button onclick="saveMonthly()">Oldalszám rögzítése</button>
     <button onclick="window.open('/get_full_diff')">Aktuális oldalszámok lekérdezése</button>
-
+    <button onclick="openManageModal('cim')">Címek kezelése</button>
+    <button onclick="openManageModal('uzemelteto')">Üzemeltetők kezelése</button>
+    <button onclick="openRelationsModal(1)">Kapcsolatok kezelése</button>
+    
     <div id="listModal" class="modal">
-    <div class="modal-content" style="width: 95%">
-        <span class="close" onclick="closeListModal()">&times;</span>
-        <h2>Nyomtatók</h2>
-
-        <div class="search-wrapper">
-            <input class="modalinput" type="text" id="searchInput" placeholder="Keresés..." oninput="filterTable()">
-            <span class="clear-search" onmousedown="clearSearch(event)">×</span>
+        <div class="modal-content" style="width: 95%">
+            <span class="close" onclick="closeListModal()">&times;</span>
+            <h2>Nyomtatók</h2>
+            
+            <div class="search-wrapper">
+                <input class="modalinput" type="text" id="searchInput" placeholder="Keresés..." oninput="filterTable()">
+                <span class="clear-search" onmousedown="clearSearch(event)">×</span>
+            </div>
+            
+            <table id="printerTable" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Azonosító</th>
+                        <th>Hely</th>
+                        <th>IP</th>
+                        <th>Típus</th>
+                        <th>Gyári szám</th>
+                        <th>Üzemeltető</th>
+                        <th>Cím</th>
+                        <th>Művelet</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+            <div class="mfctnr">
+                <button class="mfbtn" onclick="openModal()">Nyomtató hozzáadása</button>
+                <div id="pagination"></div>
+            </div>
+            
         </div>
-
-        <table id="printerTable" style="width:100%; border-collapse: collapse;">
-        <thead>
-            <tr>
-            <th>Azonosító</th>
-            <th>Hely</th>
-            <th>IP</th>
-            <th>Típus</th>
-            <th>Gyári szám</th>
-            <th>Üzemeltető</th>
-            <th>Cím</th>
-            <th>Művelet</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-        </table>
-
-        <div class="mfctnr">
-            <button class="mfbtn" onclick="openModal()">Nyomtató hozzáadása</button>
-            <div id="pagination"></div>
+    </div>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Új nyomtató</h3>
+            
+            <form id="addForm" onsubmit="return false;">
+                <label>Azonosító</label>
+                <input class="modalinput" type="text" name="azonosito" required>
+                
+                <label>Gép helye</label>
+                <input class="modalinput" type="text" name="gep_helye" required>
+                
+                <label>IP</label>
+                <input class="modalinput" type="text" name="ip" required>
+                
+                <label>Típus</label>
+                <input class="modalinput" type="text" name="tipus">
+                
+                <label>Gyári szám</label>
+                <input class="modalinput" type="text" name="gyari_szam">
+                
+                <label>Üzemeltető</label>
+                <input class="modalinput" type="text" name="uzemelteto">
+                
+                <label>Cím</label>
+                <input class="modalinput" type="text" name="cim">
+                
+                <button type="submit">Mentés</button>
+            </form>
         </div>
-        
     </div>
+    <div id="manageModal" class="modal">
+        <div class="modal-content" style="width: 75%">
+            <div class="modal-header">
+                <span class="close" onclick="closeManageModal()">✖</span>
+                <h2 id="manageModalTitle"></h2>
+            </div>
+            
+            <input class="modalinput" type="text" id="manageModalInput" placeholder="">
+            <button onclick="saveManageModal()">Hozzáadás</button>
+            
+            <hr>
+            
+            <table>
+                <tbody id="manageModalTable"></tbody>
+            </table>
+            <div class="mfctnr">
+                <div id="manageModalPagination"></div>
+            </div>
+        </div>
     </div>
-        <div id="modal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <h3>Új nyomtató</h3>
-
-        <form id="addForm" onsubmit="return false;">
-            <label>Azonosító</label>
-            <input class="modalinput" type="text" name="azonosito" required>
-
-            <label>Gép helye</label>
-            <input class="modalinput" type="text" name="gep_helye" required>
-
-            <label>IP</label>
-            <input class="modalinput" type="text" name="ip" required>
-
-            <label>Típus</label>
-            <input class="modalinput" type="text" name="tipus">
-
-            <label>Gyári szám</label>
-            <input class="modalinput" type="text" name="gyari_szam">
-
-            <label>Üzemeltető</label>
-            <input class="modalinput" type="text" name="uzemelteto">
-
-            <label>Cím</label>
-            <input class="modalinput" type="text" name="cim">
-
-            <button type="submit">Mentés</button>
-        </form>
-    </div>
+    <!-- Üzemeltető–Cím Kapcsolat Modal -->
+    <div id="relationsModal" class="modal">
+        <div class="modal-content" style="width: 95%">
+            <span class="close" onclick="closeRelationsModal()">&times;</span>
+            <h2>Üzemeltető – Cím kapcsolatok</h2>
+            
+            <!-- Új kapcsolat hozzáadása -->
+            <div class="search-wrapper" style="margin-bottom: 10px;">
+                <select id="newRelationUzem" class="mfselect"></select>
+                <select id="newRelationCim" class="mfselect"></select>
+                <button class="mfbtn" onclick="saveNewRelation()">Hozzáadás</button>
+            </div>
+            
+            <table id="relationTable" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Üzemeltető</th>
+                        <th>Cím</th>
+                        <th>Művelet</th>
+                    </tr>
+                </thead>
+                <tbody id="relationTableBody">
+                    <!-- Dinamikusan töltődik -->
+                </tbody>
+            </table>
+        </div>
     </div>
     <div class="progress">
         <div id="bar" class="bar"></div>
@@ -88,6 +138,6 @@
     <div id="tables"></div>
     <br>
     <button class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button>
-
+    
 </body>
 </html>
