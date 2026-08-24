@@ -1,2 +1,2 @@
-# printers
-A nyomtatók alap információit lekérdező alkalmazás amivel a számláló állásokat is lehet ellenőrízi.
+# PrintScout
+SNMP protokoll alapú vállalati nyomtató állás lekérdező.
