@@ -1,21 +1,178 @@
-MIT License
+Non-Redistributable Software License
 
-Copyright (c) 2026 nagykaroly94
+Copyright (c) 2026 nagykaroly94, MDkrks. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Definitions
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+For purposes of this License:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+“Software” means the software, source code, object code, binaries, documentation, configuration files, associated materials, and other materials provided by the Copyright Holders under this License.
+
+“Modified Version” means any version of the Software that has been altered, adapted, extended, translated, combined with other code, or otherwise modified in whole or in part.
+
+“Original Copyright Holders” means nagykaroly94 and MDkrks, being the original copyright holders identified in this License.
+
+“Copyright Holder” means the Original Copyright Holders and any person or entity that subsequently acquires ownership of the applicable copyright in the Software through a valid written transfer or assignment.
+
+“Authorized Developer” means a developer expressly authorized by a Copyright Holder to possess, access, modify, or administer the Software.
+
+“Authorized Organization” means the organization for which the Software is authorized for private internal use by a Copyright Holder.
+
+“Authorized Employee” means an employee of the Authorized Organization who has been expressly authorized to receive and use the Software in accordance with this License.
+
+“Third Party” means any person or entity other than a Copyright Holder, Authorized Developer, Authorized Employee, or other person expressly granted rights under this License or through prior written permission from a Copyright Holder.
+
+2. Ownership
+
+The Software is protected by applicable copyright and other intellectual-property laws.
+
+All copyright and other intellectual-property rights in the Software remain with the Copyright Holders or their lawful successors and assignees.
+
+This License grants limited permissions to use the Software. It does not transfer ownership of the Software or any intellectual-property rights to the recipient.
+
+3. Limited License Grant
+
+Permission is granted to use, inspect, and modify the Software solely for private, internal use within an Authorized Organization.
+
+No rights are granted except those expressly stated in this License.
+
+4. Authorized Organizational Access
+
+Within an Authorized Organization, access to the Software is restricted to Authorized Developers and Authorized Employees.
+
+Only Authorized Developers may provide, transfer, install, or otherwise make the Software available to another Authorized Employee.
+
+An Authorized Employee who receives the Software under this section may not further provide, transfer, copy, or make the Software available to another person unless expressly authorized by an Authorized Developer.
+
+An Authorized Employee is not a Third Party for purposes of this License.
+
+No person outside the Authorized Organization may receive or use the Software except with the prior written permission of a Copyright Holder.
+
+5. Redistribution and Transfer Prohibition
+
+Except as expressly permitted by this License or by prior written permission from a Copyright Holder, you may not:
+
+sell, rent, lease, sublicense, publish, distribute, share, transfer, assign, or otherwise provide the Software to any Third Party;
+provide any Modified Version to any Third Party;
+upload or place the Software or any Modified Version in a publicly accessible repository, archive, package registry, file-sharing service, or similar service;
+include the Software or any Modified Version in a product, package, distribution, or other work made available to a Third Party; or
+otherwise make the Software or any Modified Version available outside the permitted scope of this License.
+
+6. Network and Hosted-Service Prohibition
+
+Without prior written permission from a Copyright Holder, you may not make the Software or any Modified Version available to any Third Party through:
+
+a hosted service;
+an API;
+a website;
+a web application;
+a remote-execution environment;
+a cloud service;
+a server accessible by unauthorized persons;
+remote procedure calls; or
+any other network-accessible service or mechanism.
+
+Operating the Software on a private internal network solely for Authorized Developers and Authorized Employees of the Authorized Organization is permitted, provided that access remains within the scope of this License.
+
+7. Artificial Intelligence and Machine Learning Prohibition
+
+No use of any kind of the Software or its materials for artificial intelligence or machine learning purposes is permitted without prior written permission from a Copyright Holder.
+
+Without limiting the foregoing, you may not use the Software, source code, object code, binaries, documentation, configuration files, Modified Versions, outputs, generated results, examples, metadata, or any portion thereof to:
+
+train an artificial-intelligence model;
+train a machine-learning model;
+fine-tune any model;
+pre-train any model;
+evaluate any artificial-intelligence or machine-learning model;
+benchmark any artificial-intelligence or machine-learning system;
+test or validate any artificial-intelligence or machine-learning system;
+develop or improve any artificial-intelligence, machine-learning, or generative-AI system;
+create, augment, curate, or improve any dataset intended for artificial intelligence or machine learning;
+create embeddings, vectors, indexes, or other representations intended for use by an artificial-intelligence or machine-learning system;
+use the Software as input to an artificial-intelligence or machine-learning system;
+use an artificial-intelligence or machine-learning system to analyze, reproduce, transform, summarize, classify, or otherwise process the Software or its materials; or
+otherwise use the Software or its materials in connection with artificial intelligence or machine learning.
+
+This prohibition applies regardless of whether the artificial-intelligence or machine-learning system is commercial, non-commercial, public, private, local, hosted, proprietary, or open source.
+
+This prohibition applies to all artificial-intelligence and machine-learning systems and uses, including systems or technologies developed after the date of this License.
+
+8. External Inspection
+
+A Copyright Holder may permit a person outside the Authorized Organization to inspect the Software or its source code.
+
+An external inspector may make temporary copies of the Software or portions thereof only to the extent reasonably necessary to perform the expressly authorized inspection.
+
+Any such temporary copies must be deleted when they are no longer reasonably necessary for the authorized inspection and may not be retained for any other purpose.
+
+External inspection does not grant the inspecting person any license to use, modify, distribute, publish, execute, exploit, or otherwise use the Software beyond the expressly authorized inspection.
+
+External inspection also does not grant permission to use the Software or any portion thereof for artificial intelligence or machine learning purposes.
+
+Unless separately authorized in writing by a Copyright Holder, an external inspector may not retain or distribute copies of the Software or any portion thereof after the authorized inspection has concluded.
+
+9. Modified Versions
+
+You may create Modified Versions only within the scope of the permissions granted by this License.
+
+All Modified Versions remain subject to this License.
+
+Creating a Modified Version does not transfer ownership of the underlying Software or its copyright to the person making the modification.
+
+You may not distribute, publish, sell, sublicense, transfer, or otherwise provide a Modified Version to any person outside the permissions expressly granted by this License.
+
+10. Third-Party Components
+
+Where the Software incorporates, links to, depends upon, or is distributed with third-party software or other third-party materials, those materials remain subject to their respective licenses and intellectual-property rights.
+
+Nothing in this License grants rights to third-party materials that the Copyright Holders do not own or control.
+
+11. Termination
+
+Any breach of this License immediately and automatically terminates all permissions granted under this License, to the maximum extent permitted by applicable law.
+
+Upon termination, you must immediately:
+
+cease all use of the Software and all Modified Versions;
+cease providing access to the Software and all Modified Versions;
+delete all copies of the Software and all Modified Versions in your possession or control; and
+delete copies stored on computers, servers, storage systems, repositories, backups, or other media under your control, to the extent technically and legally practicable.
+
+Termination does not transfer or extinguish ownership of the Software or the Copyright Holders' intellectual-property rights.
+
+12. Written Exceptions
+
+Any exception, waiver, additional permission, or modification of this License must be expressly granted in writing by a Copyright Holder.
+
+No verbal statement, informal communication, conduct, or failure to enforce a provision constitutes a permanent waiver of that provision.
+
+A permission granted for one person, organization, version, or circumstance does not automatically grant permission for any other person, organization, version, or circumstance.
+
+13. No Implied Rights
+
+Except for the limited permissions expressly granted by this License, no rights or licenses are granted, whether expressly, implicitly, by estoppel, or otherwise.
+
+This includes, without limitation, rights under copyright, trademark, patent, trade secret, or other intellectual-property rights, except to the extent such rights cannot lawfully be excluded.
+
+14. No Warranty
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, OR RELIABILITY, TO THE MAXIMUM EXTENT PERMITTED BY LAW.
+
+15. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDERS SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR OTHER DAMAGES ARISING FROM OR RELATING TO THE SOFTWARE, ITS USE, INABILITY TO USE, MODIFICATION, OR DISTRIBUTION, WHETHER ARISING IN CONTRACT, TORT, NEGLIGENCE, STRICT LIABILITY, OR ANY OTHER LEGAL THEORY.
+
+16. Governing Law
+
+This License shall be governed by and interpreted in accordance with the laws applicable in the jurisdiction designated by a Copyright Holder, without regard to conflict-of-law principles.
+
+Any dispute concerning this License or the Software shall be brought exclusively in a court of competent jurisdiction designated by a Copyright Holder, to the extent permitted by applicable law.
+
+17. Entire Agreement
+
+This License constitutes the entire agreement concerning the permissions granted for the Software and supersedes any conflicting license notice or permission concerning the same subject matter, except for separately executed written agreements signed by a Copyright Holder.
+
+If any provision of this License is determined to be unenforceable, the remaining provisions shall remain in effect to the maximum extent permitted by law.
+
+No rights are granted except those expressly stated in this License.
