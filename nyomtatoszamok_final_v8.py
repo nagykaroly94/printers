@@ -1,215 +1,397 @@
 import asyncio
-from openpyxl import Workbook
+import threading
 import io
-from flask import Flask, Response, jsonify
+import os
+import configparser
+import mysql.connector
+import ipaddress
+
+from flask import Flask, Response, jsonify, render_template, request
+from openpyxl import Workbook
 from pysnmp.hlapi.v3arch.asyncio import (
     SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
     ObjectType, ObjectIdentity, get_cmd
 )
-import threading
-from flask import render_template, request
-import mysql.connector
-import configparser
-import os
-
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
+# -------------------------
+# THREAD SAFE STATE
+# -------------------------
 results = {}
 running = False
+results_lock = threading.Lock()
+ip_locations = {}
+TOTAL_PRINTERS = 0
+processed = 0
+processed_lock = threading.Lock()
+live_updates = []
+live_updates_lock = threading.Lock()
 
+def invalidate_cache():
+    global results
+    with results_lock:
+        results = {}
 
+# -------------------------
+# DB CONNECTION
+# -------------------------
 def get_db_connection():
-    # Absolút útvonal a config.ini-hez
     base_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(base_dir, "config.ini")
 
     config = configparser.ConfigParser()
     config.read(config_path)
 
-    db = mysql.connector.connect(
+    return mysql.connector.connect(
         host=config["mysql"]["host"],
         user=config["mysql"]["user"],
         password=config["mysql"]["password"],
         database=config["mysql"]["database"]
     )
 
-    return db
+def init_app_state():
+    global results
+    results = load_initial_state()
 
-# Nyomtatók lekérdezése MySQL-ből
+def load_initial_state():
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM nyomtatok")
+    rows = cursor.fetchall()
+    cursor.close()
+    db.close()
+
+    return {
+        r["azonosito"]: {
+            "id": r["azonosito"],
+            "name": r.get("gep_helye") or "N/A",
+            "ip": r.get("ip") or "N/A",
+            "type": r.get("tipus") or "N/A",
+            "serial": r.get("gyari_szam") or "N/A",
+            "pages": r.get("oldalszam") or "N/A",
+            "cim": r.get("cim") or "N/A",
+            "uzemelteto": r.get("uzemelteto") or "N/A",
+            "tablazat": r.get("tablazat"),
+            "status": r.get("status") or "idle",
+            "rogzitve": (r["updated_at"].strftime("%Y-%m-%d %H:%M:%S") if isinstance(r.get("updated_at"), datetime) else r.get("updated_at")),
+        }
+        for r in rows
+    }
+
+# -------------------------
+# LOAD PRINTERS
+# -------------------------
 def load_printers():
     db = get_db_connection()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT azonosito, gep_helye, ip, tipus, gyari_szam, uzemelteto, cim
-        FROM nyomtatok
-    """)
+
+    cursor.execute("SELECT * FROM nyomtatok")
     rows = cursor.fetchall()
 
-    printers = {}
-    for r in rows:
-        printers[r["ip"]] = r  # itt már az egész sor JSON-szerű objektumként
+    cursor.close()
+    db.close()
 
-    return printers
+    global TOTAL_PRINTERS
+    TOTAL_PRINTERS = len(rows)
 
-ip_locations = load_printers()
-# SNMP lekérdezés
+    return {r["azonosito"]: r for r in rows}
+
+
+# -------------------------
+# SNMP GET
+# -------------------------
 async def snmp_get(ip, oid):
-    transport = await UdpTransportTarget.create((ip,161), timeout=2, retries=1)
-    errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-        SnmpEngine(),
-        CommunityData('public', mpModel=0),
-        transport,
-        ContextData(),
-        ObjectType(ObjectIdentity(oid))
-    )
-    if errorIndication or errorStatus:
-        return None
-    for varBind in varBinds:
-        return varBind[1]
+    try:
+        transport = await UdpTransportTarget.create((ip, 161), timeout=5, retries=2)
 
-async def get_printer_data(ip):
-    """Lekérdezi a nyomtató típusát, oldalszámát és sorozatszámát"""
-
-    type_result = await snmp_get(ip, '1.3.6.1.2.1.1.1.0')
-    if type_result is None:
-        return (
-            "Nem sikerült a lekérdezés",
-            "Nem sikerült a lekérdezés",
-            "Nem sikerült a lekérdezés"
+        errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
+            SnmpEngine(),
+            CommunityData('public', mpModel=0),
+            transport,
+            ContextData(),
+            ObjectType(ObjectIdentity(oid))
         )
 
-    full_type = type_result.prettyPrint()
-    if not full_type.strip():
-        printer_type = "Nem sikerült a lekérdezés"
-    else:
-        printer_type = " ".join(full_type.split()[:3])
+        if errorIndication or errorStatus:
+            return None
 
-    # alap OID-ok
+        for v in varBinds:
+            return v[1]
+
+    except Exception:
+        return None
+
+
+# -------------------------
+# PRINTER DATA
+# -------------------------
+async def get_printer_data(ip):
+    type_result = await snmp_get(ip, '1.3.6.1.2.1.1.1.0')
+
+    if type_result is None:
+        return None, None, None
+
+    full_type = type_result.prettyPrint() or ""
+    full_type_upper = full_type.upper()
+
+    printer_type = " ".join(full_type.split()[:3]) if full_type else None
+
+    # -------------------------
+    # DEFAULT OID-ek
+    # -------------------------
     page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
-    type_oid = None
-    serial_oid = '1.3.6.1.2.1.43.5.1.1.17.1'
 
-    # Canon imageRUNNER1133 kivétel
-    if "Canon imageRUNNER1133" in full_type:
-        page_oid = '1.3.6.1.4.1.1602.1.11.1.3.1.4.113'
+    serial_oids = [
+        '1.3.6.1.2.1.43.5.1.1.17.1',  # standard Printer-MIB serial
+    ]
 
-    # Canon iR-ADV 525 III kivétel
-    if "Canon iR-ADV 525 III" in full_type:
-        page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
-        type_oid = '1.3.6.1.2.1.25.3.2.1.3.1'
-        serial_oid = '1.3.6.1.2.1.43.5.1.1.17.1'
+    # -------------------------
+    # HP FIX
+    # -------------------------
+    hp_type = None
 
-    # típus lekérdezés speciális OID-dal ha kell
-    if type_oid:
-        type_result = await snmp_get(ip, type_oid)
-        if type_result:
-            full_type = type_result.prettyPrint()
-            if full_type.strip():
-                printer_type = full_type
-            else:
-                printer_type = "Nem sikerült a lekérdezés"
+    if "HP" in full_type_upper and (
+        "JETDIRECT" in full_type_upper or
+        "ETHERNET" in full_type_upper or
+        "MULTI-ENVIRONMENT" in full_type_upper
+    ):
 
-    # oldalszám lekérdezés
+        alt = await snmp_get(ip, '1.3.6.1.2.1.25.3.2.1.3.1')
+
+        if alt:
+            alt_str = alt.prettyPrint()
+
+            if alt_str and alt_str.strip():
+                hp_type = alt_str.strip()
+
+    if hp_type:
+        printer_type = hp_type
+
+    # -------------------------
+    # CANON FIX
+    # -------------------------
+    if "CANON" in full_type_upper:
+
+        # imageRUNNER 1133 family
+        if "1133" in full_type_upper:
+            page_oid = '1.3.6.1.4.1.1602.1.11.1.3.1.4.113'
+
+        # iR-ADV
+        elif "IR-ADV" in full_type_upper:
+            page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
+
+        # Canon serial fallback OID-ek
+        serial_oids.extend([
+
+            # VALÓDI serial LBP6650/P
+            '1.3.6.1.4.1.1602.1.2.1.4.0',
+
+            # engine/controller ID
+            '1.3.6.1.4.1.1602.1.3.1.1.1.1.1',
+
+            # egyéb Canon
+            '1.3.6.1.4.1.1602.1.11.1.1.3.1.1',
+
+            # model
+            '1.3.6.1.4.1.1602.1.1.1.2.0'
+        ])
+
+    # -------------------------
+    # PAGE COUNT
+    # -------------------------
     page_result = await snmp_get(ip, page_oid)
-    pages = page_result if page_result is not None else "Nem sikerült a lekérdezés"
 
-    # sorozatszám lekérdezés
-    serial_result = await snmp_get(ip, serial_oid)
-    serial = serial_result.prettyPrint() if serial_result is not None else "Nem sikerült a lekérdezés"
+    pages = None
+
+    if page_result is not None:
+        try:
+            pages = int(page_result)
+        except Exception:
+            pages = None
+
+    # -------------------------
+    # SERIAL DETECT
+    # -------------------------
+    serial = None
+
+    for oid in serial_oids:
+
+        try:
+            result = await snmp_get(ip, oid)
+
+            if result:
+                value = result.prettyPrint().strip()
+
+                print(f"{ip} SERIAL OID {oid} => {value}")
+
+                if (
+                    value and
+                    value.upper() not in ["NONE", "N/A"] and
+                    "NOSUCH" not in value.upper() and
+                    value.upper() not in [
+                        "SN-E2",
+                        "LBP6650"
+                    ]
+                ):
+                    serial = value
+                    break
+
+        except Exception as e:
+            print(f"{ip} SERIAL ERROR {oid}: {e}")
 
     return printer_type, pages, serial
-# Lekérdezés futtatása
+
+# -------------------------
+# MAIN QUERY
+# -------------------------
 async def run_query():
-    global running, results
-    ip_locations = load_printers()
+    global running, results, processed
+
     running = True
-    results = {}
 
-    for ip, r in ip_locations.items():
-        printer_id = r["azonosito"]
-        location = r["gep_helye"]
-        uzemelteto = r.get("uzemelteto", "")
-        cim = r.get("cim", "")
-        try:
-            printer_type, page_count, serial = await get_printer_data(ip)
+    with processed_lock:
+        processed = 0
 
-            # --- JSON kompatibilis ---
+    local_results = {}
+    printer_locations = load_printers()
+
+    semaphore = asyncio.Semaphore(20)
+
+    async def get_data(printer_id, r):
+        async with semaphore:
+
+            db = get_db_connection()
+            cursor = db.cursor()
+
             try:
-                page_count_int = int(page_count)
-                page_count_display = page_count_int
-            except:
-                page_count_int = None
-                page_count_display = "Nem sikerült a lekérdezés"
+                ip = r["ip"]
+                try: # Do we even need the snmp, is the IP Addr. valid?
+                    ipaddress.ip_address(ip)
+                except ValueError:
+                    raise ValueError(f"Invalid IP address: {ip}")
 
-            if serial is None:
-                serial_display = "Nem sikerült a lekérdezés"
-            else:
-                serial_display = str(serial)
+                printer_type, page_count, serial = await get_printer_data(ip)
 
-            # --- results MINDIG töltődik ---
-            results[ip] = {
-                "id": printer_id,
-                "name": location,
-                "ip": ip,
-                "type": printer_type,
-                "serial": serial_display,
-                "pages": page_count_display,
-                "cim": cim,
-                "uzemelteto": uzemelteto
-            }
+                # -------------------------
+                # SNMP SUCCESS CHECK
+                # -------------------------
+                success = (
+                    printer_type is not None or
+                    page_count is not None or
+                    serial is not None
+                )
 
-            # --- DB LOGIKA KÜLÖN ---
-            if (
-                printer_type != "Nem sikerült a lekérdezés" and
-                serial_display != "Nem sikerült a lekérdezés" and
-                printer_type is not None and
-                serial_display is not None and
-                page_count_int is not None
-            ):
-                db = get_db_connection()
-                cursor = db.cursor(dictionary=True)
+                # -------------------------
+                # PAGE COUNT LOGIKA
+                # -------------------------
+                try:
+                    page_count_int = int(page_count) if page_count not in [None, "", "N/A"] else int(r.get("oldalszam") or 0)
+                except:
+                    page_count_int = None
 
-                cursor.execute("""
-                    SELECT tipus, gyari_szam, oldalszam 
-                    FROM nyomtatok 
-                    WHERE azonosito=%s
-                """, (printer_id,))
+                old_pages = int(r.get("oldalszam") or 0)
+                pages_changed = (
+                    page_count_int is not None and
+                    old_pages is not None and
+                    page_count_int != old_pages
+                )
 
-                row = cursor.fetchone()
+                # -------------------------
+                # FINAL OUTPUT (FRONTEND)
+                # -------------------------
+                final_type = printer_type or r.get("tipus")
+                final_serial = serial or r.get("gyari_szam")
 
-                if row:
-                    if not (
-                        row["tipus"] == printer_type and
-                        row["gyari_szam"] == serial_display and
-                        row["oldalszam"] == page_count_int
-                    ):
-                        cursor.execute("""
-                            UPDATE nyomtatok 
-                            SET tipus=%s, gyari_szam=%s, oldalszam=%s
-                            WHERE azonosito=%s
-                        """, (
-                            printer_type,
-                            serial_display,
-                            page_count_int,
-                            printer_id
-                        ))
+                data = {
+                    "id": r["azonosito"],
+                    "name": r.get("gep_helye") or "N/A",
+                    "ip": r.get("ip") or "N/A",
+                    "type": final_type or "N/A",
+                    "serial": final_serial or "N/A",
+                    "pages": page_count_int or "N/A",
+                    "cim": r.get("cim") or "N/A",
+                    "uzemelteto": r.get("uzemelteto") or "N/A",
+                    "tablazat": r.get("tablazat"),
+                    "status": "ok" if success else "error",
+                    "rogzitve": (r.get("updated_at").isoformat() if isinstance(r.get("updated_at"), datetime) else r.get("updated_at"))
+                }
 
-        except Exception:
-            results[ip] = {
-                "id": printer_id,
-                "name": location,
-                "type": "Nem sikerült a lekérdezés",
-                "pages": "Nem sikerült a lekérdezés",
-                "serial": "Nem sikerült a lekérdezés",
-                "cim": cim,
-                "uzemelteto": uzemelteto,
-                "ip": ip
-            }
+                local_results[r["azonosito"]] = data
 
-    db.commit()
+                with live_updates_lock:
+                    live_updates.append(data)
+
+                # -------------------------
+                # DB UPDATE LOGIKA
+                # -------------------------
+                updates = []
+                values = []
+
+                # csak ha jött SNMP adat
+                if printer_type:
+                    updates.append("tipus=%s")
+                    values.append(printer_type)
+
+                if serial:
+                    updates.append("gyari_szam=%s")
+                    values.append(serial)
+
+                if pages_changed:
+                    updates.append("oldalszam=%s")
+                    values.append(page_count_int)
+
+                if success:
+                    updates.append("updated_at = %s")
+                    values.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+                # csak akkor írunk DB-be, ha van mit frissíteni
+                if updates:
+                    values.append(r["azonosito"])
+
+                    cursor.execute(f"""
+                        UPDATE nyomtatok
+                        SET {", ".join(updates)}
+                        WHERE azonosito=%s
+                    """, values)
+
+                    db.commit()
+
+            except Exception as e:
+                local_results[r["azonosito"]] = {
+                    "id": r["azonosito"],
+                    "name": r.get("gep_helye") or "N/A",
+                    "ip": r.get("ip") or "N/A",
+                    "type": r.get("tipus") or "N/A",
+                    "serial": r.get("gyari_szam") or "N/A",
+                    "pages": r.get("oldalszam") or "N/A",
+                    "cim": r.get("cim") or "N/A",
+                    "uzemelteto": r.get("uzemelteto") or "N/A",
+                    "tablazat": r.get("tablazat"),
+                    "status": "error",
+                    "rogzitve": (r.get("updated_at").isoformat() if isinstance(r.get("updated_at"), datetime) else r.get("updated_at"))
+                }
+
+            finally:
+                cursor.close()
+                db.close()
+
+                global processed
+                with processed_lock:
+                    processed = processed + 1
+
+    await asyncio.gather(*(get_data(id_, r) for id_, r in printer_locations.items()))
+
+    with results_lock:
+        results = local_results
+
     running = False
-# Flask útvonalak
+
+# -------------------------
+# SNAPSHOT
+# -------------------------
 def save_monthly_snapshot():
     db = get_db_connection()
     cursor = db.cursor()
@@ -218,26 +400,59 @@ def save_monthly_snapshot():
         INSERT INTO nyomtato_havi_allas (nyomtato_id, uzemelteto, cim, datum, oldalszam)
         SELECT azonosito, uzemelteto, cim, DATE_FORMAT(CURDATE(), '%Y-%m-01'), oldalszam
         FROM nyomtatok
-        ON DUPLICATE KEY UPDATE oldalszam = VALUES(oldalszam), rogzitve = NOW(), uzemelteto = VALUES(uzemelteto), cim = VALUES(cim);
+        ON DUPLICATE KEY UPDATE
+            oldalszam = VALUES(oldalszam),
+            rogzitve = NOW(),
+            uzemelteto = VALUES(uzemelteto),
+            cim = VALUES(cim);
     """)
 
     db.commit()
+    cursor.close()
+    db.close()
 
+
+# -------------------------
+# FLASK ROUTES
+# -------------------------
 @app.route("/")
 def index():
+    return render_template("login.html")
+
+@app.route("/index")
+def login():
     return render_template("index.html")
 
 @app.route("/start")
 def start():
     global running
-    if not running:
-        thread = threading.Thread(target=lambda: asyncio.run(run_query()))
-        thread.start()
-    return "ok"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if running:
+        return f"already running"
+
+    thread = threading.Thread(target=lambda: asyncio.run(run_query()))
+    thread.start()
+
+    return f"ok"
 
 @app.route("/status")
 def status():
-    return jsonify({"results": results, "total": len(ip_locations), "running": running})
+    global live_updates
+
+    with processed_lock:
+        prog = processed
+
+    with live_updates_lock:
+        updates = live_updates.copy()
+        live_updates.clear()
+
+    return jsonify({
+        "processed": prog,
+        "total": TOTAL_PRINTERS,
+        "running": running,
+        "updates": updates
+    })
 
 @app.route("/printer_pages/<path:table_name>.xlsx")
 def download_table_xlsx(table_name):
@@ -250,9 +465,8 @@ def download_table_xlsx(table_name):
     for r in results.values():
         company = r.get("uzemelteto", "Nincs üzemeltető")
         address = r.get("cim", "Nincs cím")
-        key = f"{company} - {address}"
 
-        if key == table_name:
+        if table_name == r.get("tablazat", ""):
             ws.append([
                 r["id"],
                 r["name"],
@@ -273,56 +487,68 @@ def download_table_xlsx(table_name):
 
     return Response(output, headers=headers)
 
+# -------------------------
+# EXCEL EXPORT (ALL)
+# -------------------------
 @app.route("/printer_pages.xlsx")
 def download_all_xlsx():
     wb = Workbook()
     ws = wb.active
     ws.title = "Nyomtatók"
-    ws.append(["Azonosító","Hely","IP cím","Típus","Sorozatszám","Oldalszám","Üzemeltető","Cím"])
-    for r in results.values():
-        ws.append([r["id"], r["name"], r["ip"], r["type"], r["serial"], r["pages"], r["uzemelteto"], r["cim"]])
+
+    ws.append(["Azonosító","Hely","IP","Típus","Sorozatszám","Oldalszám","Üzemeltető","Cím"])
+
+    with results_lock:
+        for r in results.values():
+            ws.append([
+                r["id"], r["name"], r["ip"],
+                r["type"], r["serial"], r["pages"],
+                r["uzemelteto"], r["cim"]
+            ])
+
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
 
-    headers = {
-        "Content-Disposition": "attachment; filename=Teljes_tablazat.xlsx",
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "X-Content-Type-Options": "nosniff"  # Chrome biztonságosabbnak látja
-    }
+    return Response(
+        output,
+        headers={
+            "Content-Disposition": "attachment; filename=Teljes_tablazat.xlsx",
+            "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+    )
 
-    return Response(output, headers=headers)
 
+# -------------------------
+# ADD PRINTER
+# -------------------------
 @app.route("/add_printer", methods=["POST"])
 def add_printer():
     try:
-        azonosito = request.form.get("azonosito")
-        gep_helye = request.form.get("gep_helye")
-        ip = request.form.get("ip")
-        tipus = request.form.get("tipus")
-        gyari_szam = request.form.get("gyari_szam")
-        uzemelteto = request.form.get("uzemelteto")
-        cim = request.form.get("cim")
+        data = request.get_json()
 
         db = get_db_connection()
         cursor = db.cursor()
 
         cursor.execute("""
             INSERT INTO nyomtatok 
-            (azonosito, gep_helye, ip, tipus, gyari_szam, uzemelteto, cim)
-            VALUES (%s,%s,%s,%s,%s,%s,%s)
+            (azonosito, gep_helye, ip, tipus, gyari_szam, uzemelteto, cim, tablazat)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
-            azonosito,
-            gep_helye,
-            ip,
-            tipus,
-            gyari_szam,
-            uzemelteto,
-            cim
+            data.get("azonosito"),
+            data.get("gep_helye"),
+            data.get("ip"),
+            data.get("tipus"),
+            data.get("gyari_szam"),
+            data.get("uzemelteto"),
+            data.get("cim"),
+            data.get("csoport")
         ))
 
         db.commit()
-
+        cursor.close()
+        db.close()
+        invalidate_cache()
         return {"success": True}
 
     except Exception as e:
@@ -330,25 +556,69 @@ def add_printer():
 
 @app.route("/get_printers")
 def get_printers():
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM nyomtatok")
-    return jsonify(cursor.fetchall())
+    if results:
+        uj_results = []
 
+        for id_, adat in results.items():
+            uj_results.append({
+                "azonosito": adat.get("id"),
+                "cim": adat.get("cim"),
+                "gep_helye": adat.get("name"),
+                "gyari_szam": adat.get("serial"),
+                "ip": adat.get("ip"),
+                "oldalszam": adat.get("pages"),
+                "tablazat": adat.get("tablazat"),
+                "tipus": adat.get("type"),
+                "rogzitve": adat.get("rogzitve"),
+                "uzemelteto": adat.get("uzemelteto"),
+                "status": adat.get("status", "idle")
+            })
+        return jsonify(uj_results)
+
+    else:
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM nyomtatok")
+        rows = cursor.fetchall()
+
+        for r in rows:
+            r["oldalszam"] = r.get("oldalszam") or "N/A"
+            r["gyari_szam"] = r.get("gyari_szam") or "N/A"
+            r["tipus"] = r.get("tipus") or "N/A"
+            r["ip"] = r.get("ip") or "N/A"
+            r["status"] = "idle"
+            r["rogzitve"] = r.get("updated_at")
+
+        cursor.close()
+        db.close()
+        return jsonify(rows)
+
+# -------------------------
+# DELETE PRINTER
+# -------------------------
 @app.route("/delete_printer/<azonosito>", methods=["DELETE"])
 def delete_printer(azonosito):
     db = get_db_connection()
     cursor = db.cursor()
+
     cursor.execute("DELETE FROM nyomtatok WHERE azonosito=%s", (azonosito,))
     db.commit()
+
+    cursor.close()
+    db.close()
+    invalidate_cache()
     return {"success": True}
 
+# -------------------------
+# UPDATE PRINTER
+# -------------------------
 @app.route("/update_printer", methods=["POST"])
 def update_printer():
     data = request.json
 
     db = get_db_connection()
     cursor = db.cursor()
+
     cursor.execute("""
         UPDATE nyomtatok SET
             gep_helye=%s,
@@ -369,8 +639,36 @@ def update_printer():
     ))
 
     db.commit()
+    cursor.close()
+    db.close()
+    invalidate_cache()
     return {"success": True}
 
+
+
+@app.route("/update_printer_tablazat", methods=["POST"])
+def update_printer_tablazat():
+    data = request.json
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    cursor.execute("""
+        UPDATE nyomtatok SET
+            tablazat=%s
+        WHERE azonosito=%s
+    """, (
+        data["tablazat"],
+        data["azonosito"]
+    ))
+
+    db.commit()
+    cursor.close()
+    db.close()
+    return {"success": True}
+
+# -------------------------
+# SNAPSHOT ROUTE
+# -------------------------
 @app.route("/save_monthly", methods=["POST"])
 def save_monthly():
     try:
@@ -378,6 +676,7 @@ def save_monthly():
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 @app.route("/get_full_diff")
 def getfulldiff():
@@ -539,7 +838,6 @@ def delete_uzemelteto():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
     
-
 @app.route("/api/update_cim", methods=["POST"])
 def update_cim():
     data = request.get_json()
@@ -560,7 +858,6 @@ def update_cim():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-
 @app.route("/api/update_uzemelteto", methods=["POST"])
 def update_uzemelteto():
     data = request.get_json()
@@ -580,7 +877,6 @@ def update_uzemelteto():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-
 
 @app.route("/api/get_relations")
 def get_all_relations():
@@ -621,7 +917,6 @@ def add_relation():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-
 @app.route("/api/delete_relation", methods=["POST"])
 def delete_relation():
     data = request.json
@@ -656,5 +951,135 @@ def get_relations_by_uzem(uzem_id):
     conn.close()
     return jsonify(rows)
 
-if __name__=="__main__":
-    app.run(host="0.0.0.0", port=5000)
+
+@app.route("/api/get_csoportok")
+def get_csoportok():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id, csoport FROM csoportok")
+        rows = cursor.fetchall()
+
+        result = []
+        for row in rows:
+            result.append({
+                "id": row[0],
+                "csoport": row[1]
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/add_csoport", methods=["POST"])
+def add_csoport():
+    data = request.get_json()
+    name = data.get("csoport")
+
+    if not name:
+        return jsonify({"success": False, "error": "Hiányzó név"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO csoportok (csoport) VALUES (%s)",
+            (name,)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/update_printer_count", methods=["POST"])
+def update_printer_count():
+    global results
+    data = request.get_json()
+    printer_id = data.get("printer_id")
+    page_count = data.get("page_count")
+
+    try:
+        if page_count not in [None, "", "N/A"]:
+            page_count_int = int(page_count)
+        else:
+            return jsonify({"success": False, "error": "Page count must be an integer."}), 500
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"""
+            UPDATE nyomtatok
+            SET oldalszam = {page_count_int}
+            WHERE azonosito LIKE {printer_id}
+        """)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        invalidate_cache()
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/update_csoport", methods=["POST"])
+def update_csoport():
+    data = request.get_json()
+    id_ = data.get("id")
+    name = data.get("csoport")
+
+    if not id_ or not name:
+        return jsonify({"success": False, "error": "Hiányzó adat"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "UPDATE csoportok SET csoport=%s WHERE id=%s",
+            (name, id_)
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/delete_csoport", methods=["POST"])
+def delete_csoport():
+    data = request.get_json()
+    id_ = data.get("id")
+
+    if not id_:
+        return jsonify({"success": False, "error": "Hiányzó ID"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM csoportok WHERE id=%s", (id_,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+init_app_state()

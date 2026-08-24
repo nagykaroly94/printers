@@ -1,7 +1,7 @@
 let allPrinters = [];
 let printers = [];
 let currentPage = 1;
-let rowsPerPage = 8;
+let rowsPerPage = 5;
 
 let manageType = "";
 let manageData = [];
@@ -12,8 +12,62 @@ let currentUzemId = null;
 let relationsData = [];
 let allRelations = [];
 
-function openModal() {
+let tablazatPage = 1;
+let tablazatRowsPerPage = 5;
+
+let csoportData = [];
+let csoportPage = 1;
+let csoportRowsPerPage = 5;
+
+
+async function openModal() {
     document.getElementById("modal").style.display = "block";
+    const uzemSelect = document.querySelector('#modal select[name="uzemelteto"]');
+    const cimSelect = document.querySelector('#modal select[name="cim"]');
+    const csoportSelect = document.querySelector(".csoport");
+    
+    // Csoportok betöltése
+    const csoportok = await getOptions("/api/get_csoportok");
+    
+    populateSelect(
+        csoportSelect,
+        csoportok,
+        "csoport",
+        "csoport"
+    );
+    
+    // Üzemeltetők betöltése
+    const uzemeltetok = await getOptions("/api/list_uzemelteto");
+    
+    populateSelect(
+        uzemSelect,
+        uzemeltetok,
+        "id",
+        "uzemelteto"
+    );
+    
+    // Alapból üres cím lista
+    populateSelect(cimSelect, [], "cim_id", "cim");
+    
+    // Ha változik az üzemeltető → töltsük a címeket
+    uzemSelect.addEventListener("change", async () => {
+        const selectedUzem = parseInt(uzemSelect.value);
+        
+        if (isNaN(selectedUzem)) {
+            populateSelect(cimSelect, [], "cim_id", "cim");
+            return;
+        }
+        
+        const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzem}`);
+        
+        populateSelect(
+            cimSelect,
+            relatedCims,
+            "cim_id",
+            "cim"
+        );
+        
+    });
 }
 
 function closeModal() {
@@ -35,52 +89,45 @@ function closeListModal() {
     document.getElementById("listModal").style.display = "none";
 }
 
-async function getOptions(url) {
-    const res = await fetch(url);
-    return await res.json();
-}
-
 function populateSelect(selectElem, options, valueField, textField, selectedValue = null) {
     if (!selectElem) return;
-
+    
     const wasDisabled = selectElem.disabled; // remember disabled state
     selectElem.disabled = false;              // enable temporarily
-
+    
     selectElem.innerHTML = `<option value="">Nincs megadva</option>`;
-
+    
     options.forEach(opt => {
         const value = opt[valueField];
         const text = opt[textField] || value;
-
+        
         const option = document.createElement("option");
         option.value = value;
         option.textContent = text;
-
+        
         selectElem.appendChild(option);
     });
-    console.log(selectedValue)
     if (selectedValue !== null) {
-        console.log(selectedValue)
         selectElem.value = String(selectedValue);
     }
-
+    
     selectElem.disabled = wasDisabled; // restore disabled state
 }
 
 async function renderTable() {
     const tbody = document.querySelector("#printerTable tbody");
     tbody.innerHTML = "";
-
+    
     // Lekérjük az összes üzemeltetőt egyszer
     const uzemeltetoOptions = await getOptions("/api/uzemelteto");
-
+    
     let start = (currentPage-1) * rowsPerPage;
     let end = start + rowsPerPage;
     let pageData = printers.slice(start, end);
-
-for (const p of pageData) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+    
+    for (const p of pageData) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
         <td>${p.azonosito}</td>
         <td><input class="mfinput" value="${p.gep_helye}" disabled></td>
         <td><input class="mfinput" value="${p.ip}" disabled></td>
@@ -90,54 +137,53 @@ for (const p of pageData) {
         <td><select class="mfselect cim" disabled></select></td>
         <td class="thfit">
             <button onclick="editRow('${p.azonosito}', this)">🔧</button>
-            <button onclick="deleteRow('${p.azonosito}')">❌</button>
         </td>
     `;
-    tbody.appendChild(tr);
-
-    const uzemSelect = tr.querySelector(".uzemelteto");
-    const cimSelect = tr.querySelector(".cim");
-
-    // ——— Determine selected IDs dynamically ———
-    let selectedUzemId = null;
-    if (p.uzemelteto_id !== undefined) {
-        selectedUzemId = p.uzemelteto_id;
-    } else if (p.uzemelteto) {
-        // Match name to ID
-        const match = uzemeltetoOptions.find(u => u.uzemelteto === p.uzemelteto);
-        selectedUzemId = match ? match.id : null;
-    }
-
-    // Fill uzemelteto select
-    populateSelect(uzemSelect, uzemeltetoOptions, "id", "uzemelteto", selectedUzemId);
-
-    // Fill cim select only if there’s an uzemelteto
-    if (selectedUzemId !== null) {
-        const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzemId}`);
-
-        let selectedCimId = null;
-        if (p.cim_id !== undefined) {
-            selectedCimId = p.cim_id;
-        } else if (p.cim) {
-            const match = relatedCims.find(c => c.cim === p.cim);
-            selectedCimId = match ? match.cim_id : null;
+        tbody.appendChild(tr);
+        
+        const uzemSelect = tr.querySelector(".uzemelteto");
+        const cimSelect = tr.querySelector(".cim");
+        
+        // ——— Determine selected IDs dynamically ———
+        let selectedUzemId = null;
+        if (p.uzemelteto_id !== undefined) {
+            selectedUzemId = p.uzemelteto_id;
+        } else if (p.uzemelteto) {
+            // Match name to ID
+            const match = uzemeltetoOptions.find(u => u.uzemelteto === p.uzemelteto);
+            selectedUzemId = match ? match.id : null;
         }
-
-        populateSelect(cimSelect, relatedCims, "cim_id", "cim", selectedCimId);
-    }
-
-    // Update cim select when uzemelteto changes
-    uzemSelect.addEventListener("change", async () => {
-        const selectedUzem = parseInt(uzemSelect.value);
-        if (isNaN(selectedUzem)) {
-            populateSelect(cimSelect, [], "cim_id", "cim");
-            return;
+        
+        // Fill uzemelteto select
+        populateSelect(uzemSelect, uzemeltetoOptions, "id", "uzemelteto", selectedUzemId);
+        
+        // Fill cim select only if there’s an uzemelteto
+        if (selectedUzemId !== null) {
+            const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzemId}`);
+            
+            let selectedCimId = null;
+            if (p.cim_id !== undefined) {
+                selectedCimId = p.cim_id;
+            } else if (p.cim) {
+                const match = relatedCims.find(c => c.cim === p.cim);
+                selectedCimId = match ? match.cim_id : null;
+            }
+            
+            populateSelect(cimSelect, relatedCims, "cim_id", "cim", selectedCimId);
         }
-        const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzem}`);
-        populateSelect(cimSelect, relatedCims, "cim_id", "cim");
-    });
-}
-
+        
+        // Update cim select when uzemelteto changes
+        uzemSelect.addEventListener("change", async () => {
+            const selectedUzem = parseInt(uzemSelect.value);
+            if (isNaN(selectedUzem)) {
+                populateSelect(cimSelect, [], "cim_id", "cim");
+                return;
+            }
+            const relatedCims = await getOptions(`/api/get_relations_by_uzem/${selectedUzem}`);
+            populateSelect(cimSelect, relatedCims, "cim_id", "cim");
+        });
+    }
+    
     renderPagination();
 }
 
@@ -248,31 +294,16 @@ function getcurrentTotalPages() {
 }
 
 function renderPagination() {
-    const totalPages = getcurrentTotalPages();
-    const container = document.getElementById("pagination");
-    container.innerHTML = "";
-    
-    // Első oldal gomb
-    const firstBtn = document.createElement("button");
-    firstBtn.textContent = "Első";
-    firstBtn.disabled = currentPage === 1;
-    firstBtn.onclick = () => { currentPage = 1; renderTable(); };
-    container.appendChild(firstBtn);
-    
-    for(let i=1;i<=totalPages;i++){
-        const btn = document.createElement("button");
-        btn.textContent = i;
-        btn.disabled = i===currentPage;
-        btn.onclick = () => { currentPage=i; renderTable(); };
-        container.appendChild(btn);
-    }
-    
-    // Utolsó oldal gomb
-    const lastBtn = document.createElement("button");
-    lastBtn.textContent = "Utolsó";
-    lastBtn.disabled = currentPage === totalPages;
-    lastBtn.onclick = () => { currentPage = totalPages; renderTable(); };
-    container.appendChild(lastBtn);
+    createPagination({
+        containerId: "pagination",
+        totalItems: printers.length,
+        currentPage: currentPage,
+        rowsPerPage: rowsPerPage,
+        onPageChange: (page) => {
+            currentPage = page;
+            renderTable();
+        }
+    });
 }
 
 function clearSearch(e) {
@@ -285,15 +316,17 @@ function clearSearch(e) {
 }
 
 function filterTable() {
-    const filter = document.getElementById("searchInput").value.toLowerCase();
+    const filter = document.getElementById("searchInput").value.trim().toLowerCase();
+    
     if (!filter) {
-        // Ha üres, visszaáll a teljes lista
         printers = [...allPrinters];
     } else {
-        printers = allPrinters.filter(p =>
-            Object.values(p).some(v => String(v).toLowerCase().includes(filter))
-        );
+        printers = allPrinters.filter(p => {
+            if (!p.gep_helye) return false;
+            return String(p.gep_helye).toLowerCase().includes(filter);
+        });
     }
+    
     currentPage = 1;
     renderTable();
 }
@@ -424,7 +457,7 @@ function deleteRow(id){
     if(!confirm("Biztos törlöd?")) return;
     fetch("/delete_printer/"+id, {method:"DELETE"})
     .then(r=>r.json())
-    .then(r=>{ if(r.success){ printers = printers.filter(p=>p.azonosito!==id); renderTable(); } else alert("Hiba"); });
+    .then(r=>{ if(r.success){ printers = printers.filter(p=>p.azonosito!==id); renderTable(); loadInitial(); } else alert("Hiba"); });
 }
 
 // Modal megnyitása és adatok betöltése
@@ -461,6 +494,17 @@ async function openRelationsModal() {
 // Modal bezárása
 function closeRelationsModal() {
     document.getElementById("relationsModal").style.display = "none";
+}
+
+function toggleModal() {
+    document.querySelectorAll('.modalinput').forEach(input => { input.value = '';});
+    closeListModal();
+    closeManageModal();
+    closeRelationsModal();
+    closeModal();
+    closeListModaltabla();
+    closeCsoportModal();
+    toggleMenu(document.querySelector('.hamburger'));
 }
 
 // Meglévő kapcsolatok betöltése
@@ -543,15 +587,326 @@ async function editRelation(relation_id, btn) {
     }
 }
 
+// MODAL MEGNYITÁS
+async function openListModaltabla() {
+    document.getElementById("listModaltabla").style.display = "block";
+    
+    tablazatPage = 1;
+    
+    await loadCsoportokModal();
+    await loadPrinters();
+    
+    renderTablecsoport();
+}
+
+// MODAL BEZÁRÁS
+function closeListModaltabla() {
+    document.getElementById("listModaltabla").style.display = "none";
+}
+
+// ADATBETÖLTÉS
+async function loadPrinters() {
+    const res = await fetch("/get_printers");
+    printers = await res.json();
+    allPrinters = [...printers];
+}
+
+function renderPaginationTabla() {
+    createPagination({
+        containerId: "tablazatPagination",
+        totalItems: printers.length,
+        currentPage: tablazatPage,
+        rowsPerPage: tablazatRowsPerPage,
+        onPageChange: (page) => {
+            tablazatPage = page;
+            renderTablecsoport();
+        }
+    });
+}
+
+// TÁBLÁZAT RENDER (CSAK 2 ADAT)
+function renderTablecsoport() {
+    const tbody = document.querySelector("#printerTabletabla tbody");
+    tbody.innerHTML = "";
+    
+    const start = (tablazatPage - 1) * tablazatRowsPerPage;
+    const end = start + tablazatRowsPerPage;
+    const pageData = printers.slice(start, end);
+    
+    pageData.forEach((p) => {
+        const tr = document.createElement("tr");
+        
+        tr.innerHTML = `
+            <td>${p.azonosito}</td>
+            <td>
+                <select class="mfselect" disabled></select>
+            </td>
+            <td>
+                <button onclick="editRowtablazat('${p.azonosito}', this)" data-editing="false">🔧</button>
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+        
+        const select = tr.querySelector("select");
+        
+        csoportData.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c.csoport;
+            opt.textContent = c.csoport;
+            
+            if (c.csoport === p.tablazat) {
+                opt.selected = true;
+            }
+            
+            select.appendChild(opt);
+        });
+    });
+    
+    renderPaginationTabla();
+}
+async function loadCsoportokModal() {
+    const res = await fetch('/api/get_csoportok');
+    csoportData = await res.json();
+}
+async function init() {
+    await loadCsoportokModal();   // 1. DB
+    await loadPrinters();    // 2. nyomtatók
+    renderTablecsoport();      // 3. UI
+}
+function filterTabletablazat() {
+    const filter = document.getElementById("searchInputtablazat").value.trim().toLowerCase();
+    
+    if (!filter) {
+        printers = [...allPrinters];
+    } else {
+        printers = allPrinters.filter(p => {
+            if (!p.azonosito) return false;
+            return String(p.azonosito).toLowerCase().includes(filter);
+        });
+    }
+    
+    tablazatPage = 1;
+    renderTablecsoport();
+}
+function clearSearchtablazat(e) {
+    e.preventDefault(); // ne vegye el a fókuszt
+    
+    const input = document.getElementById("searchInputtablazat");
+    input.value = "";
+    filterTabletablazat(); // újraszűrés
+    input.focus(); // maradjon aktív
+}
+function editRowtablazat(id, btn) {
+    const row = btn.closest("tr");
+    const inputs = row.querySelectorAll("input, select");
+    
+    const editing = btn.dataset.editing === "true";
+    
+    if (!editing) {
+        // szerkesztés indítása
+        inputs.forEach(input => input.disabled = false);
+        btn.textContent = "💾";
+        btn.dataset.editing = "true";
+    } else {
+        // mentés
+        const p = printers.find(pr => pr.azonosito === id);
+        
+        p.tablazat = inputs[0].value;
+        
+        fetch("/update_printer_tablazat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                azonosito: p.azonosito,
+                tablazat: inputs[0].value,
+            })
+        })
+        .then(r=>r.json())
+        .then(r=>{
+            if(r.success){
+                inputs[0].value = p.tablazat;
+                
+                inputs.forEach(input => input.disabled = true);
+                btn.textContent = "🔧";
+                btn.dataset.editing = "false";
+                renderTablecsoport(); // frissítjük a táblázatot, hogy látszódjon a változás
+                
+            } else {
+                alert("Hiba");
+            }
+        });
+    }
+}
+/* -------------------------
+Csoport Modal
+------------------------- */
+async function openCsoportModal() {
+    document.getElementById("csoportModal").style.display = "block";
+    await loadCsoportokApp();
+    renderCsoportok();
+}
+function closeCsoportModal() {
+    document.getElementById("csoportModal").style.display = "none";
+}
+async function loadCsoportokApp() {
+    const res = await fetch('/api/get_csoportok');
+    csoportData = await res.json();
+    csoportPage = 1;
+}
+
+function renderPaginationcsoport() {
+    createPagination({
+        containerId: "csoportPagination",
+        totalItems: csoportData.length,
+        currentPage: csoportPage,
+        rowsPerPage: csoportRowsPerPage,
+        onPageChange: (page) => {
+            csoportPage = page;
+            renderCsoportok();
+        }
+    });
+}
+
+async function renderCsoportok() {
+    const tbody = document.getElementById("csoportTableBody");
+    tbody.innerHTML = "";
+    
+    const start = (csoportPage - 1) * csoportRowsPerPage;
+    const end = start + csoportRowsPerPage;
+    const pageData = csoportData.slice(start, end);
+    
+    pageData.forEach(csoport => {
+        const tr = document.createElement("tr");
+        
+        tr.innerHTML = `
+            <td>
+                <input type="text" class="mfinput" value="${csoport.csoport}" disabled>
+            </td>
+            <td>
+                <button onclick="updateCsoport(${csoport.id}, this)" data-editing="false">🔧</button>
+                <button onclick="deleteCsoport(${csoport.id})">❌</button>
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+    
+    await loadCsoportokApp();
+    renderPaginationcsoport();
+}
+
+// Új csoport
+function addCsoport() {
+    const input = document.getElementById("newCsoportInput");
+    const name = input.value.trim();
+    
+    if (!name) return;
+    
+    fetch('/api/add_csoport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csoport: name })
+    })
+    .then(r => r.json())
+    .then(r => {
+        if (r.success) {
+            input.value = "";
+            loadCsoportokApp();
+        } else {
+            alert("Hiba hozzáadáskor");
+        }
+    })
+    .catch(() => alert("Hálózati hiba"));
+    
+    renderCsoportok();
+}
+// Inline módosítás
+async function updateCsoport(id, btn) {
+    const row = btn.closest("tr");
+    const input = row.querySelector("input");
+    const editing = btn.dataset.editing === "true";
+    
+    if (!editing) {
+        input.disabled = false;
+        input.focus();
+        
+        btn.textContent = "💾";
+        btn.dataset.editing = "true";
+    } else {
+        const newValue = input.value.trim();
+        
+        const res = await fetch('/api/update_csoport', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, csoport: newValue })
+        });
+        
+        const r = await res.json();
+        
+        if (r.success) {
+            await loadCsoportokApp();
+            renderCsoportok();
+        } else {
+            alert("Hiba mentéskor");
+        }
+    }
+}
+
+// Törlés
+async function deleteCsoport(id) {
+    if (!confirm("Biztos törlöd?")) return;
+    
+    await fetch("/api/delete_csoport", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ id })
+    });
+    
+    await loadCsoportokApp();
+    
+    const totalPages = Math.ceil(csoportData.length / csoportRowsPerPage);
+    if (csoportPage > totalPages) {
+        csoportPage = totalPages || 1;
+    }
+    
+    renderCsoportok();
+}
+
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        const active = document.activeElement;
+        if (active && active.tagName === "INPUT" && !active.disabled) {
+            const row = active.closest("tr");
+            const btn = row.querySelector("button[data-editing='true']");
+            if (btn) btn.click();
+        }
+    }
+});
+
 document.getElementById("addForm").addEventListener("submit", function(e) {
     e.preventDefault();
-    
+    const form = document.getElementById("addForm");
+    const inputs = form.querySelectorAll("input, select");
     const formData = new FormData(this);
     
     fetch("/add_printer", {
         method: "POST",
-        body: formData
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            azonosito: inputs[0].value,
+            gep_helye: inputs[1].value,
+            ip: inputs[2].value,
+            tipus: inputs[3].value,
+            gyari_szam: inputs[4].value,
+            uzemelteto: inputs[5].options[inputs[5].selectedIndex].text,
+            cim: inputs[6].options[inputs[6].selectedIndex].text,
+            csoport: inputs[7].value
+        })
     })
+    
     .then(res => res.json())
     .then(data => {
         if (data.success) {
@@ -568,7 +923,7 @@ document.getElementById("addForm").addEventListener("submit", function(e) {
                 // Az új elem az utolsó oldalon legyen
                 currentPage = Math.ceil(printers.length / rowsPerPage);
                 renderTable();
-                openListModal(); // most már csak a modal nyitása
+                loadInitial();
             });
             
         } else {

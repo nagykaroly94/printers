@@ -7,12 +7,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="static/js/app.js" defer></script>
     <script src="static/js/modal.js" defer></script>
+    
     <title>Nyomtató számlálók</title>
     
 </head>
 <body>
-    
-    <h1>🖨️ Nyomtató monitor</h1>  
+    <h1 class="header">🖨️ Nyomtató monitor<button style="float: right;" class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button></h1>
+
     <div class="hamburger" onclick="toggleMenu(this)">
         <div></div>
         <div></div>
@@ -20,13 +21,15 @@
     </div>
     
     <div class="menu" id="hamburgerMenu">
-        <button onclick="start()">Nyomtatók frissítése</button>
-        <button onclick="openListModal()">Nyomtatók kezelése</button>
-        <button onclick="saveMonthly()">Oldalszám rögzítése</button>
-        <button onclick="window.open('/get_full_diff')">Aktuális oldalszámok lekérdezése</button>
-        <button onclick="openManageModal('cim')">Címek kezelése</button>
-        <button onclick="openManageModal('uzemelteto')">Üzemeltetők kezelése</button>
-        <button onclick="openRelationsModal(1)">Kapcsolatok kezelése</button>
+        <button onclick="(toggleModal(),start())">Nyomtatók frissítése</button>
+        <button onclick="(toggleModal(),openListModal())">Nyomtatók kezelése</button>
+        <button onclick="(toggleModal(),openListModaltabla())">Csoport kezelése</button>
+        <button onclick="(toggleModal(),openCsoportModal())">Csoportok hozzáadása</button>
+        <button onclick="(toggleModal(),openManageModal('cim'))">Címek kezelése</button>
+        <button onclick="(toggleModal(),openManageModal('uzemelteto'))">Üzemeltetők kezelése</button>
+        <button onclick="(toggleModal(),openRelationsModal(1))">Kapcsolatok kezelése</button>
+        <button onclick="(toggleModal(),saveMonthly())">Oldalszám rögzítése</button>
+        <button onclick="(toggleModal(),window.open('/get_full_diff'))">Oldalszám exportálása</button> 
     </div>
     
     <div id="listModal" class="modal">
@@ -62,6 +65,7 @@
             
         </div>
     </div>
+    
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
@@ -75,24 +79,60 @@
                 <input class="modalinput" type="text" name="gep_helye" required>
                 
                 <label>IP</label>
-                <input class="modalinput" type="text" name="ip" required>
+                <input class="modalinput" type="text" name="ip">
                 
                 <label>Típus</label>
                 <input class="modalinput" type="text" name="tipus">
                 
                 <label>Gyári szám</label>
-                <input class="modalinput" type="text" name="gyari_szam">
+                    <input class="modalinput" type="text" name="gyari_szam">
                 
                 <label>Üzemeltető</label>
-                <input class="modalinput" type="text" name="uzemelteto">
+                <select class="modalinput uzemelteto" name="uzemelteto">
+                    <option value="">Nincs megadva</option>
+                </select>
                 
                 <label>Cím</label>
-                <input class="modalinput" type="text" name="cim">
+                <select class="modalinput cim" name="cim">
+                    <option value="">Nincs megadva</option>
+                </select>
+                
+                <label>Csoport</label>
+                <select class="modalinput csoport" name="csoport">
+                    <option value="">Nincs megadva</option>
+                </select>
                 
                 <button type="submit">Mentés</button>
             </form>
         </div>
     </div>
+    
+    <div id="listModaltabla" class="modal">
+        <div class="modal-content" style="width: 50%">
+            <span class="close" onclick="closeListModaltabla()">&times;</span>
+            <h2>Nyomtatók</h2>
+            
+            <div class="search-wrapper">
+                <input class="modalinput" type="text" id="searchInputtablazat" placeholder="Keresés..." oninput="filterTabletablazat()">
+                <span class="clear-search" onmousedown="clearSearchtablazat(event)">×</span>
+            </div>
+            
+            <table id="printerTabletabla" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Azonosító</th>
+                        <th>Táblázat</th>
+                        <th>Művelet</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>   
+            <div class="mfctnr">
+                <div id="tablazatPagination"></div>    
+            </div>     
+        </div>
+    </div>
+    
     <div id="manageModal" class="modal">
         <div class="modal-content" style="width: 75%">
             <div class="modal-header">
@@ -113,7 +153,7 @@
             </div>
         </div>
     </div>
-    <!-- Üzemeltető–Cím Kapcsolat Modal -->
+    
     <div id="relationsModal" class="modal">
         <div class="modal-content" style="width: 95%">
             <span class="close" onclick="closeRelationsModal()">&times;</span>
@@ -121,8 +161,8 @@
             
             <!-- Új kapcsolat hozzáadása -->
             <div class="search-wrapper" style="margin-bottom: 10px;">
-                <select id="newRelationUzem" class="mfselect"></select>
-                <select id="newRelationCim" class="mfselect"></select>
+                <select id="newRelationUzem" class="mfselect" style="padding: 10px;"></select>
+                <select id="newRelationCim" class="mfselect" style="padding: 10px;"></select>
                 <button class="mfbtn" onclick="saveNewRelation()">Hozzáadás</button>
             </div>
             
@@ -140,12 +180,55 @@
             </table>
         </div>
     </div>
+    
+    <div class="modal" id="editPrinterModal" tabindex="-1">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nyomtató szerkesztése</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="printerId" placeholder="Azonosító">
+                <input type="text" id="gepHelye" placeholder="Gép helye">
+                <select id="tablazatSelect"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary">Mentés</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mégse</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="csoportModal" class="modal">
+        <div class="modal-content" style="width: 50%">
+            <span class="close" onclick="closeCsoportModal()">&times;</span>
+            <h2>Csoportok kezelése</h2>
+            
+            <!-- Új csoport hozzáadás -->
+            <div class="search-wrapper" style="margin-bottom: 10px;">
+                <input class="modalinput" type="text" id="newCsoportInput" placeholder="Csoport neve">
+                <button class="mfbtn" onclick="addCsoport()">Hozzáadás</button>
+            </div>
+            
+            <!-- Lista -->
+            <table style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Csoport név</th>
+                        <th>Művelet</th>
+                    </tr>
+                </thead>
+                <tbody id="csoportTableBody"></tbody>
+            </table>
+            <div class="mfctnr">
+                <div id="csoportPagination"></div>
+            </div>
+        </div>
+    </div>
+    
     <div class="progress">
         <div id="bar" class="bar"></div>
     </div>
-    <div id="tables"></div>
-    <br>
-    <button class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button>
-    
+    <div id="tables"></div>  
 </body>
 </html>

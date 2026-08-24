@@ -52,6 +52,7 @@ hr.separator {
     height: 20px;
     background: #22c55e;
     width: 0%;
+    transition: width 0.4s ease;
 }
 
 body {
@@ -122,6 +123,9 @@ input {
 /* csak fókuszkor jelenjen meg */
 #searchInput:focus + .clear-search {
     display: flex; /* flex legyen, ne block */
+}
+ #searchInputtablazat:focus + .clear-search {
+    display: flex; /* flex legyen, ne block */ 
 }
 
 /* hover */
@@ -248,6 +252,21 @@ label {
     color: inherit;
     outline: none;             /* fókusz körvonal eltüntetése */
     transition: border-color 0.2s;
+    background-color: #0f172a;
+}
+
+.modalinput > select option {
+    border: none;
+    background: transparent;
+    color: rgb(0, 0, 0);
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    box-sizing: border-box;
+    min-width: 0;
+    outline: none;
+    appearance: none;
+    width: 100%;
 }
 
 .modal button:hover {
@@ -328,6 +347,7 @@ label {
     background-color: #1e40af; /* sötétebb kék */
 }
 
+
 /* Hamburger ikon */
 .hamburger {
     display: inline-block;
@@ -396,4 +416,18 @@ label {
 }
 .hamburger.open div:nth-child(3) {
     transform: rotate(45deg) translate(-7px, -7px);
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 1; }
+}
+
+.blink {
+    animation: blink 1s infinite;
+}
+
+.error-row {
+    background-color: #ef4444;
 }
