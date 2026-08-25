@@ -8,11 +8,11 @@
     <script src="static/js/app.js" defer></script>
     <script src="static/js/modal.js" defer></script>
     
-    <title>Nyomtató számlálók</title>
+    <title>PrinterSCOUT</title>
     
 </head>
 <body>
-    <h1 class="header">🖨️ Nyomtató monitor<button style="float: right;" class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button></h1>
+    <h1 class="header">🖨️ PrinterSCOUT<button style="float: right;" class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button></h1>
 
     <div class="hamburger" onclick="toggleMenu(this)">
         <div></div>
@@ -30,6 +30,8 @@
         <button onclick="(toggleModal(),openRelationsModal(1))">Kapcsolatok kezelése</button>
         <button onclick="(toggleModal(),saveMonthly())">Oldalszám rögzítése</button>
         <button onclick="(toggleModal(),window.open('/get_full_diff'))">Oldalszám exportálása</button> 
+        <form action="{{ url_for('logout') }}" method="GET"><button type="submit">Kijelentkezés</button>
+</form>
     </div>
     
     <div id="listModal" class="modal">
