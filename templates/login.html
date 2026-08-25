@@ -3,72 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nyomtató monitor – Bejelentkezés</title>
+  <title>PrinterSCOUT – Bejelentkezés</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
   <script src="{{ url_for('static', filename='js/login.js') }}" defer></script>
 </head>
 <body>
-
+  
   <header class="topbar">
-
+    
     <div class="brand">
       <span class="printer">🖨️</span>
-      <span>Nyomtató monitor</span>
+      <span>PrinterSCOUT</span>
     </div>
   </header>
-
+  
   <main class="page">
     <section class="content">
       <div class="login-card">
         <div class="card-header">
           <h1>Bejelentkezés</h1>
         </div>
-
-        <form id="loginForm">
+        
+        <form id="loginForm" method="POST" action="{{ url_for('login') }}">
           <div class="field">
             <label for="username">Felhasználónév</label>
             <input
-              id="username"
-              name="username"
-              type="text"
-              autocomplete="username"
-              placeholder="Felhasználónév"
-              required
+            id="username"
+            name="username"
+            type="text"
+            autocomplete="username"
+            placeholder="Felhasználónév"
+            required
             >
           </div>
-
+          
           <div class="field">
             <label for="password">Jelszó</label>
             <div class="password-wrap">
               <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="Jelszó"
-                required
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Jelszó"
+              required
               >
               <button class="toggle-password" type="button" id="togglePassword" aria-label="Jelszó megjelenítése">◉</button>
             </div>
           </div>
-
+          
           <div class="options">
             <label class="remember">
-              <input type="checkbox" id="remember">
+              <input type="checkbox" id="remember" name="remember">
               <span>Bejelentkezve maradok</span>
             </label>
             <a class="forgot" href="#">Elfelejtett jelszó?</a>
           </div>
-
+          
           <button class="login-btn" type="submit">Bejelentkezés</button>
-
-          <div class="message" id="message">
-            Sikertelen bejelentkezés. Ellenőrizd a megadott adatokat.
+          
+          {% if hiba %}
+          <div class="message error" id="message">
+            {{ hiba }}
           </div>
+          {% endif %}
         </form>
-
+        
         <div class="footer">
-          Nyomtató monitor rendszer
+          PrinterSCOUT &copy; 2026
         </div>
       </div>
     </section>

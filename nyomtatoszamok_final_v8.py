@@ -6,15 +6,35 @@ import configparser
 import mysql.connector
 import ipaddress
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
 from openpyxl import Workbook
 from pysnmp.hlapi.v3arch.asyncio import (
     SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
     ObjectType, ObjectIdentity, get_cmd
 )
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    login_user,
+    logout_user,
+    login_required,
+    current_user
+)
+
+import bcrypt
 
 app = Flask(__name__)
+app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=40)  # 40 napos cookie élettartam
+app.config["SECRET_KEY"] = "egy-hosszu-veletlenszeru-titkos-kulcs"
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+login_manager.login_view = "login"
+login_manager.login_message = "A folytatáshoz be kell jelentkezned."
+login_manager.login_message_category = "error"
 
 # -------------------------
 # THREAD SAFE STATE
@@ -28,6 +48,13 @@ processed = 0
 processed_lock = threading.Lock()
 live_updates = []
 live_updates_lock = threading.Lock()
+
+class User(UserMixin):
+
+    def __init__(self, username, password_hash):
+        self.id = username
+        self.username = username
+        self.password_hash = password_hash
 
 def invalidate_cache():
     global results
@@ -414,13 +441,101 @@ def save_monthly_snapshot():
 # -------------------------
 # FLASK ROUTES
 # -------------------------
-@app.route("/")
-def login():
-    return render_template("login.html")
+@app.before_request
+def check_login():
 
-@app.route("/index")
-def index():
-    return render_template("index.html")
+    # Login oldal szabadon elérhető
+    if request.endpoint == "login":
+        return
+
+    # CSS, JS, képek stb. szabadon elérhetők
+    if request.endpoint == "static":
+        return
+
+    # Minden más csak bejelentkezve
+    if not current_user.is_authenticated:
+        return redirect(url_for("login"))
+
+
+@app.route("/", methods=["GET", "POST"])
+def login():
+
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        print("LOGIN POST:", username)
+
+        db = None
+        cursor = None
+
+        try:
+            db = get_db_connection()
+            cursor = db.cursor()
+
+            cursor.execute(
+                """
+                SELECT felhasznalonev, jelszo
+                FROM felhasznalok
+                WHERE felhasznalonev = %s
+                """,
+                (username,)
+            )
+
+            result = cursor.fetchone()
+
+            print("DB RESULT:", result)
+
+            if result is not None:
+
+                db_username = result[0]
+                stored_password = result[1]
+
+                if bcrypt.checkpw(
+                    password.encode("utf-8"),
+                    stored_password.encode("utf-8")
+                ):
+
+                    user = User(
+                        username=db_username,
+                        password_hash=stored_password
+                    )
+
+                    remember = request.form.get("remember") == "on"
+
+                    login_user(user, remember=remember)
+
+                    print("SIKERES LOGIN:", current_user.username)
+
+                    return redirect(url_for("index"))
+
+            return render_template(
+                "login.html",
+                hiba="Helytelen felhasználónév vagy jelszó."
+            )
+
+        except Exception as e:
+
+            print("LOGIN HIBA:", e)
+
+            return render_template(
+                "login.html",
+                hiba="Hiba történt a bejelentkezés során."
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if db:
+                db.close()
+
+    return render_template("login.html")
 
 @app.route("/start")
 def start():
@@ -1080,6 +1195,69 @@ def delete_csoport():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@login_manager.user_loader
+def load_user(user_id):
+
+    db = None
+    cursor = None
+
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+
+        cursor.execute(
+            """
+            SELECT felhasznalonev, jelszo
+            FROM felhasznalok
+            WHERE felhasznalonev = %s
+            """,
+            (user_id,)
+        )
+
+        result = cursor.fetchone()
+
+        if result is None:
+            return None
+
+        return User(
+            username=result[0],
+            password_hash=result[1]
+        )
+
+    except Exception as e:
+        print("USER LOADER HIBA:", e)
+        return None
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if db:
+            db.close()
+
+
+@app.route("/index")
+@login_required
+def index():
+
+    print("INDEX:", current_user.username)
+
+    return render_template(
+        "index.html",
+        felhasznalonev=current_user.username
+    )
+
+
+@app.route("/logout")
+@login_required
+def logout():
+
+    logout_user()
+
+    return redirect(url_for("login"))
+
 
 init_app_state()
 
