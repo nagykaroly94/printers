@@ -5,6 +5,7 @@ import os
 import configparser
 import mysql.connector
 import ipaddress
+import bcrypt
 
 from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
 from openpyxl import Workbook
@@ -23,11 +24,13 @@ from flask_login import (
     current_user
 )
 
-import bcrypt
+config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini")
+config = configparser.ConfigParser()
+config.read(config_path)
 
 app = Flask(__name__)
 app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=40)  # 40 napos cookie élettartam
-app.config["SECRET_KEY"] = "egy-hosszu-veletlenszeru-titkos-kulcs"
+app.config["SECRET_KEY"] = config["app"]["secret"]
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -65,12 +68,7 @@ def invalidate_cache():
 # DB CONNECTION
 # -------------------------
 def get_db_connection():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(base_dir, "config.ini")
-
-    config = configparser.ConfigParser()
-    config.read(config_path)
-
+    global config
     return mysql.connector.connect(
         host=config["mysql"]["host"],
         user=config["mysql"]["user"],
