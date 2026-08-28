@@ -508,6 +508,15 @@ body {
     box-shadow: 0 0 0 2px rgba(39, 104, 232, 0.16);
 }
 
+.users-table .inline-select:disabled {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    background-image: none;
+    cursor: default;
+}
+
 /* =========================
    BADGE
 ========================= */
