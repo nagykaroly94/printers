@@ -1,20 +1,34 @@
 {
-    "1602" : {
-        "manufacturer" : "Canon",
+    "Generic" : {
+        "_comment" : "Generic",
         "model_oid" : "1.3.6.1.2.1.1.1.0",
         "counter_oid" : "1.3.6.1.2.1.43.10.2.1.4.1.1",
-        "serial_oid" : "1.3.6.1.4.1.1602.1.2.1.4.0"
+        "serial_oid" : "1.3.6.1.2.1.43.5.1.1.17.1",
+        "models" : {}
+    },
+    "1602" : {
+        "_comment" : "Canon",
+        "model_oid" : "1.3.6.1.2.1.1.1.0",
+        "counter_oid" : "1.3.6.1.2.1.43.10.2.1.4.1.1",
+        "serial_oid" : "1.3.6.1.4.1.1602.1.2.1.4.0",
+        "models" : {
+            "Canon imageRUNNER1133 series" : {
+                "counter_oid" : "1.3.6.1.4.1.1602.1.11.1.3.1.4.113"
+            }
+        }
     },
     "641" : {
-        "manufacturer" : "Lexmark",
+        "_comment" : "Lexmark",
         "model_oid" : "1.3.6.1.2.1.1.1.0",
         "counter_oid" : "1.3.6.1.2.1.43.10.2.1.4.1.1",
-        "serial_oid" : "1.3.6.1.2.1.43.5.1.1.17.1"
+        "serial_oid" : "1.3.6.1.2.1.43.5.1.1.17.1",
+        "models" : {}
     },
     "11" : {
-        "manufacturer" : "HP",
+        "_comment" : "HP",
         "model_oid" : "1.3.6.1.2.1.25.3.2.1.3.1",
         "counter_oid" : "1.3.6.1.2.1.43.10.2.1.4.1.1",
-        "serial_oid" : "1.3.6.1.2.1.43.5.1.1.17.1"
+        "serial_oid" : "1.3.6.1.2.1.43.5.1.1.17.1",
+        "models" : {}
     }
 }

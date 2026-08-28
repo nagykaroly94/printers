@@ -7,6 +7,8 @@ import mysql.connector
 import ipaddress
 import bcrypt
 
+from modules.printer_snmp import get_printer_data, SNMPError
+
 from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
 from openpyxl import Workbook
 from pysnmp.hlapi.v3arch.asyncio import (
@@ -123,151 +125,6 @@ def load_printers():
 
     return {r["azonosito"]: r for r in rows}
 
-
-# -------------------------
-# SNMP GET
-# -------------------------
-async def snmp_get(ip, oid):
-    try:
-        transport = await UdpTransportTarget.create((ip, 161), timeout=5, retries=2)
-
-        errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
-            SnmpEngine(),
-            CommunityData('public', mpModel=0),
-            transport,
-            ContextData(),
-            ObjectType(ObjectIdentity(oid))
-        )
-
-        if errorIndication or errorStatus:
-            return None
-
-        for v in varBinds:
-            return v[1]
-
-    except Exception:
-        return None
-
-
-# -------------------------
-# PRINTER DATA
-# -------------------------
-async def get_printer_data(ip):
-    type_result = await snmp_get(ip, '1.3.6.1.2.1.1.1.0')
-
-    if type_result is None:
-        return None, None, None
-
-    full_type = type_result.prettyPrint() or ""
-    full_type_upper = full_type.upper()
-
-    printer_type = " ".join(full_type.split()[:3]) if full_type else None
-
-    # -------------------------
-    # DEFAULT OID-ek
-    # -------------------------
-    page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
-
-    serial_oids = [
-        '1.3.6.1.2.1.43.5.1.1.17.1',  # standard Printer-MIB serial
-    ]
-
-    # -------------------------
-    # HP FIX
-    # -------------------------
-    hp_type = None
-
-    if "HP" in full_type_upper and (
-        "JETDIRECT" in full_type_upper or
-        "ETHERNET" in full_type_upper or
-        "MULTI-ENVIRONMENT" in full_type_upper
-    ):
-
-        alt = await snmp_get(ip, '1.3.6.1.2.1.25.3.2.1.3.1')
-
-        if alt:
-            alt_str = alt.prettyPrint()
-
-            if alt_str and alt_str.strip():
-                hp_type = alt_str.strip()
-
-    if hp_type:
-        printer_type = hp_type
-
-    # -------------------------
-    # CANON FIX
-    # -------------------------
-    if "CANON" in full_type_upper:
-
-        # imageRUNNER 1133 family
-        if "1133" in full_type_upper:
-            page_oid = '1.3.6.1.4.1.1602.1.11.1.3.1.4.113'
-
-        # iR-ADV
-        elif "IR-ADV" in full_type_upper:
-            page_oid = '1.3.6.1.2.1.43.10.2.1.4.1.1'
-
-        # Canon serial fallback OID-ek
-        serial_oids.extend([
-
-            # VALÓDI serial LBP6650/P
-            '1.3.6.1.4.1.1602.1.2.1.4.0',
-
-            # engine/controller ID
-            '1.3.6.1.4.1.1602.1.3.1.1.1.1.1',
-
-            # egyéb Canon
-            '1.3.6.1.4.1.1602.1.11.1.1.3.1.1',
-
-            # model
-            '1.3.6.1.4.1.1602.1.1.1.2.0'
-        ])
-
-    # -------------------------
-    # PAGE COUNT
-    # -------------------------
-    page_result = await snmp_get(ip, page_oid)
-
-    pages = None
-
-    if page_result is not None:
-        try:
-            pages = int(page_result)
-        except Exception:
-            pages = None
-
-    # -------------------------
-    # SERIAL DETECT
-    # -------------------------
-    serial = None
-
-    for oid in serial_oids:
-
-        try:
-            result = await snmp_get(ip, oid)
-
-            if result:
-                value = result.prettyPrint().strip()
-
-                print(f"{ip} SERIAL OID {oid} => {value}")
-
-                if (
-                    value and
-                    value.upper() not in ["NONE", "N/A"] and
-                    "NOSUCH" not in value.upper() and
-                    value.upper() not in [
-                        "SN-E2",
-                        "LBP6650"
-                    ]
-                ):
-                    serial = value
-                    break
-
-        except Exception as e:
-            print(f"{ip} SERIAL ERROR {oid}: {e}")
-
-    return printer_type, pages, serial
-
 # -------------------------
 # MAIN QUERY
 # -------------------------
@@ -296,8 +153,12 @@ async def run_query():
                     ipaddress.ip_address(ip)
                 except ValueError:
                     raise ValueError(f"Invalid IP address: {ip}")
-
-                printer_type, page_count, serial = await get_printer_data(ip)
+                try:
+                    printer_type, page_count, serial = await get_printer_data(ip)
+                except SNMPError as exc:
+                    print(exc)
+                except RuntimeError as exc:
+                    print(exc)
 
                 # -------------------------
                 # SNMP SUCCESS CHECK
