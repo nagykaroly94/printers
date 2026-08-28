@@ -10,6 +10,31 @@ window.onload = function () {
     document.getElementById("bar").style.width = "0%";
 };
 
+
+/* -------------------------
+SSE (Server-Sent Events)
+------------------------- */
+const events = new EventSource("/events");
+
+events.onmessage = (event) => {
+    showToast(event.data);
+};
+
+function showToast(message) {
+    const container = document.getElementById("toast-container");
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    // Remove it after the animation finishes
+    setTimeout(() => {
+        toast.remove();
+    }, 3100);
+}
+
 /* -------------------------
 START
 ------------------------- */

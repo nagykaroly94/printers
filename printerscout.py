@@ -6,25 +6,13 @@ import configparser
 import mysql.connector
 import ipaddress
 import bcrypt
+import queue
 
-from modules.printer_snmp import get_printer_data, SNMPError
-
-from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
 from openpyxl import Workbook
-from pysnmp.hlapi.v3arch.asyncio import (
-    SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
-    ObjectType, ObjectIdentity, get_cmd
-)
 from datetime import datetime, timedelta
-
-from flask_login import (
-    LoginManager,
-    UserMixin,
-    login_user,
-    logout_user,
-    login_required,
-    current_user
-)
+from modules.printer_snmp import get_printer_data, SNMPError
+from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini")
 config = configparser.ConfigParser()
@@ -33,6 +21,8 @@ config.read(config_path)
 app = Flask(__name__)
 app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=40)  # 40 napos cookie élettartam
 app.config["SECRET_KEY"] = config["app"]["secret"]
+
+clients = []
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -156,10 +146,10 @@ async def run_query():
                 try:
                     printer_type, page_count, serial = await get_printer_data(ip)
                 except SNMPError as exc:
-                    print(exc)
+                    if not "timeout" in exc: notify_clients(exc)
+                    else: print(exc)
                 except RuntimeError as exc:
                     print(exc)
-
                 # -------------------------
                 # SNMP SUCCESS CHECK
                 # -------------------------
@@ -315,6 +305,32 @@ def check_login():
     if not current_user.is_authenticated:
         return redirect(url_for("login"))
 
+@app.route("/events")
+def events():
+    q = queue.Queue()
+    clients.append(q)
+
+    def generate():
+        try:
+            while True:
+                message = q.get()
+                yield f"data: {message}\n\n"
+        finally:
+            clients.remove(q)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def notify_clients(message):
+    for q in clients:
+        q.put(message)
 
 @app.route("/", methods=["GET", "POST"])
 def login():

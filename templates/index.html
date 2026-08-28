@@ -30,10 +30,11 @@
         <button onclick="(toggleModal(),openRelationsModal(1))">Kapcsolatok kezelése</button>
         <button onclick="(toggleModal(),saveMonthly())">Oldalszám rögzítése</button>
         <button onclick="(toggleModal(),window.open('/get_full_diff'))">Oldalszám exportálása</button> 
-        <form action="{{ url_for('logout') }}" method="GET"><button type="submit">Kijelentkezés</button>
-</form>
+        <form action="{{ url_for('logout') }}" method="GET"><button type="submit">Kijelentkezés</button></form>
     </div>
     
+    <div id="toast-container"></div>
+
     <div id="listModal" class="modal">
         <div class="modal-content" style="width: 95%">
             <span class="close" onclick="closeListModal()">&times;</span>

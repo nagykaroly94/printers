@@ -5,16 +5,7 @@ https://www.alvestrand.no/objectid/1.3.6.1.4.1.html
 """
 import json
 import os
-
-from pysnmp.hlapi.v3arch.asyncio import (
-    SnmpEngine,
-    CommunityData,
-    UdpTransportTarget,
-    ContextData,
-    ObjectType,
-    ObjectIdentity,
-    get_cmd,
-)
+from pysnmp.hlapi.v3arch.asyncio import SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, get_cmd
 
 class SNMPError(Exception):
     """Általános SNMP lekérdezési hiba."""
