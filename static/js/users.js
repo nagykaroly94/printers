@@ -1,18 +1,18 @@
+/*
+
+* Mintaadatok.
+* Backend használatakor ezeket API-hívásokra lehet cserélni.
+*/
+
+let users = [
     
-    /*
-    * Mintaadatok.
-    * Backend használatakor ezeket API-hívásokra lehet cserélni.
-    */
-    
-    let users = [
     
     {
         id: 1,
         name: "Kovács Péter",
         username: "kovacs.peter",
         email: "peter@example.hu",
-        role: "admin",
-        status: "active"
+        role: "admin"
     },
     
     {
@@ -20,457 +20,621 @@
         name: "Nagy Anna",
         username: "nagy.anna",
         email: "anna@example.hu",
-        role: "user",
-        status: "active"
+        role: "user"
     }
     
-    ];
     
-    
-    const usersBody =
-    document.getElementById("usersBody");
-    
-    const searchInput =
-    document.getElementById("searchInput");
-    
-    const userCount =
-    document.getElementById("userCount");
-    
-    const emptyState =
-    document.getElementById("emptyState");
-    
-    
-    /* =========================
-    FELHASZNÁLÓK MEGJELENÍTÉSE
-    ========================= */
-    
-    function renderUsers() {
-        
-        const search =
-        searchInput.value
-        .trim()
-        .toLowerCase();
-        
-        
-        const filtered =
-        users.filter(user =>
+];
+
+const usersBody =
+document.getElementById("usersBody");
+
+const searchInput =
+document.getElementById("searchInput");
+
+const userCount =
+document.getElementById("userCount");
+
+const emptyState =
+document.getElementById("emptyState");
+
+/* =========================
+FELHASZNÁLÓK MEGJELENÍTÉSE
+========================= */
+
+function renderUsers() {
+
+const search =
+    searchInput.value
+    .trim()
+    .toLowerCase();
+
+
+const filtered =
+    users.filter(user =>
         user.name.toLowerCase().includes(search) ||
         user.username.toLowerCase().includes(search) ||
         user.email.toLowerCase().includes(search)
+    );
+
+
+usersBody.innerHTML = "";
+
+
+userCount.textContent =
+    `${filtered.length} / ${users.length} felhasználó`;
+
+
+emptyState.hidden =
+    filtered.length !== 0;
+
+
+filtered.forEach(user => {
+
+    const row =
+        document.createElement("tr");
+
+
+    row.innerHTML = `
+
+        <td>
+            <input
+                class="inline-input"
+                data-field="name"
+                value="${escapeAttribute(user.name)}"
+                disabled
+            >
+        </td>
+
+
+        <td>
+            <input
+                class="inline-input"
+                data-field="username"
+                value="${escapeAttribute(user.username)}"
+                disabled
+            >
+        </td>
+
+
+        <td>
+            <input
+                class="inline-input"
+                data-field="email"
+                type="email"
+                value="${escapeAttribute(user.email)}"
+                disabled
+            >
+        </td>
+
+
+        <td>
+            <select
+                class="inline-select"
+                data-field="role"
+                disabled
+            >
+                <option
+                    value="user"
+                    ${user.role === "user" ? "selected" : ""}
+                >
+                    User
+                </option>
+
+                <option
+                    value="admin"
+                    ${user.role === "admin" ? "selected" : ""}
+                >
+                    Admin
+                </option>
+            </select>
+        </td>
+
+
+        <td>
+
+            <button
+                class="primary-btn"
+                type="button"
+                onclick="setNewPassword(${user.id})"
+            >
+                Jelszó módosítása
+            </button>
+
+        </td>
+
+
+        <td>
+
+            <div class="actions">
+
+                <button
+                    class="primary-btn"
+                    type="button"
+                    onclick="editUser(${user.id}, this)"
+                >
+                    🔧
+                </button>
+
+                <button
+                    class="primary-btn"
+                    type="button"
+                    onclick="deleteUser(${user.id})"
+                >
+                    ❌
+                </button>
+
+            </div>
+
+        </td>
+
+    `;
+
+
+    usersBody.appendChild(row);
+
+});
+
+}
+
+/* =========================
+JOGOSULTSÁG MÓDOSÍTÁSA
+========================= */
+
+function changeUserRole(id, role) {
+    
+    
+    const user =
+    users.find(item => item.id === id);
+    
+    
+    if (!user) return;
+    
+    
+    user.role = role;
+    
+    
+}
+
+/* =========================
+ÚJ JELSZÓ MEGADÁSA
+========================= */
+
+function setNewPassword(id) {
+    
+    
+    const user =
+    users.find(item => item.id === id);
+    
+    
+    if (!user) return;
+    
+    
+    const password =
+    prompt(
+        `Új jelszó megadása:\n\n${user.name}`
+    );
+    
+    
+    if (password === null) {
+        return;
+    }
+    
+    
+    if (password.length < 8) {
+        
+        alert(
+            "A jelszónak legalább 8 karakter hosszúnak kell lennie."
         );
         
-        
-        usersBody.innerHTML = "";
-        
-        
-        userCount.textContent =
-        `${filtered.length} / ${users.length} felhasználó`;
-        
-        
-        emptyState.hidden =
-        filtered.length !== 0;
-        
-        
-        filtered.forEach(user => {
-            
-            const row =
-            document.createElement("tr");
-            
-            
-            row.innerHTML = `
+        return;
+    }
+    
+    
+    /*
+    * FONTOS:
+    * A jelszót valódi rendszerben nem itt,
+    * hanem a backendben kell kezelni.
+    */
+    
+    alert(
+        "A jelszó sikeresen módosítva."
+    );
+    
+    
+}
 
-                <td>
-                    <span class="user-name">
-                        ${escapeHtml(user.name)}
-                    </span>
-                </td>
+/* =========================
+FELHASZNÁLÓ MÓDOSÍTÁSA
+========================= */
 
-                <td>
-                    <span class="muted">
-                        ${escapeHtml(user.username)}
-                    </span>
-                </td>
+function editUser(id, btn) {
 
-                <td>
-                    <span class="muted">
-                        ${escapeHtml(user.email)}
-                    </span>
-                </td>
+    const row = btn.closest("tr");
 
-                <td>
-                    <span class="badge ${user.role === "admin" ? "admin" : ""}">
-                        ${
-            user.role === "admin"
-            ? "Rendszergazda"
-            : "Felhasználó"
-            }
-                    </span>
-                </td>
+    const inputs = row.querySelectorAll(
+        'input[data-field], select[data-field]'
+    );
 
-                <td>
-                    <span class="badge ${user.status === "inactive" ? "inactive" : ""}">
-                        ${
-            user.status === "active"
-            ? "Aktív"
-            : "Inaktív"
-            }
-                    </span>
-                </td>
+    const editing = btn.dataset.editing === "true";
 
-                <td>
+    if (!editing) {
 
-                    <div class="actions">
-
-                        <button
-                            class="secondary-btn"
-                            type="button"
-                            onclick="editUser(${user.id})"
-                        >
-                            Módosítás
-                        </button>
-
-                        <button
-                            class="danger-btn"
-                            type="button"
-                            onclick="deleteUser(${user.id})"
-                        >
-                            Törlés
-                        </button>
-
-                    </div>
-
-                </td>
-            `;
-            
-            
-            usersBody.appendChild(row);
-            
+        // Szerkesztés bekapcsolása
+        inputs.forEach(input => {
+            input.disabled = false;
         });
-        
-    }
-    
-    
-    /* =========================
-    FELHASZNÁLÓ MÓDOSÍTÁSA
-    ========================= */
-    
-    function editUser(id) {
-        
-        const user =
-        users.find(item => item.id === id);
-        
-        
-        if (!user) return;
-        
-        
-        const row =
-        [...usersBody.querySelectorAll("tr")]
-        .find(
-        tr =>
-        tr.querySelector(
-        `[onclick="editUser(${id})"]`
-        )
+
+        btn.textContent = "💾";
+        btn.dataset.editing = "true";
+
+    } else {
+
+        // Mentés
+        const user = users.find(
+            item => item.id === id
         );
-        
-        
-        if (!row) return;
-        
-        
-        row.innerHTML = `
 
-            <td>
-                <input
-                    class="inline-input"
-                    data-field="name"
-                    value="${escapeAttribute(user.name)}"
-                >
-            </td>
-
-            <td>
-                <input
-                    class="inline-input"
-                    data-field="username"
-                    value="${escapeAttribute(user.username)}"
-                >
-            </td>
-
-            <td>
-                <input
-                    class="inline-input"
-                    data-field="email"
-                    type="email"
-                    value="${escapeAttribute(user.email)}"
-                >
-            </td>
-
-  
-
-            <td>
-
-                <div class="actions">
-
-                    <button
-                        class="primary-btn"
-                        type="button"
-                        onclick="saveUser(${id}, this)"
-                    >
-                        Mentés
-                    </button>
-
-                    <button
-                        class="secondary-btn"
-                        type="button"
-                        onclick="renderUsers()"
-                    >
-                        Mégsem
-                    </button>
-
-                    <button
-                        class="danger-btn"
-                        type="button"
-                        onclick="deleteUser(${id})"
-                    >
-                        Törlés
-                    </button>
-
-                </div>
-
-            </td>
-        `;
-        
-    }
-    
-    
-    /* =========================
-    MÓDOSÍTÁS MENTÉSE
-    ========================= */
-    
-    function saveUser(id, button) {
-        
-        const row =
-        button.closest("tr");
-        
-        const user =
-        users.find(item => item.id === id);
-        
-        
         if (!user) return;
-        
-        
-        const name =
-        row.querySelector(
-        '[data-field="name"]'
-        ).value.trim();
-        
-        
-        const username =
-        row.querySelector(
-        '[data-field="username"]'
-        ).value.trim();
-        
-        
-        const email =
-        row.querySelector(
-        '[data-field="email"]'
-        ).value.trim();
-        
-        
-        const role =
-        row.querySelector(
-        '[data-field="role"]'
-        ).value;
-        
-        
-        const status =
-        row.querySelector(
-        '[data-field="status"]'
-        ).value;
-        
-        
+
+        const name = row
+            .querySelector('[data-field="name"]')
+            .value.trim();
+
+        const username = row
+            .querySelector('[data-field="username"]')
+            .value.trim();
+
+        const email = row
+            .querySelector('[data-field="email"]')
+            .value.trim();
+
+        const role = row
+            .querySelector('[data-field="role"]')
+            .value;
+
+
         if (!name || !username || !email) {
-            
+
             alert(
-            "A név, felhasználónév és e-mail cím kitöltése kötelező."
+                "A név, felhasználónév és e-mail cím kitöltése kötelező."
             );
-            
+
             return;
         }
-        
-        
+
+
         user.name = name;
         user.username = username;
         user.email = email;
         user.role = role;
-        user.status = status;
-        
-        
-        renderUsers();
-        
-    }
-    
-    
-    /* =========================
-    FELHASZNÁLÓ TÖRLÉSE
-    ========================= */
-    
-    function deleteUser(id) {
-        
-        const user =
-        users.find(item => item.id === id);
-        
-        
-        if (!user) return;
-        
-        
-        const confirmed =
-        confirm(
-        `Biztosan törölni szeretnéd a felhasználót?\n\n${user.name}`
-        );
-        
-        
-        if (!confirmed) return;
-        
-        
-        users =
-        users.filter(item => item.id !== id);
-        
-        
-        renderUsers();
-        
-    }
-    
-    
-    /* =========================
-    ÚJ FELHASZNÁLÓ
-    ========================= */
-    
-    document
-    .getElementById("addUserForm")
-    .addEventListener("submit", event => {
-        
-        event.preventDefault();
-        
-        
-        const name =
-        document.getElementById("newName")
-        .value.trim();
-        
-        
-        const username =
-        document.getElementById("newUsername")
-        .value.trim();
-        
-        
-        const email =
-        document.getElementById("newEmail")
-        .value.trim();
-        
-        
-        const password =
-        document.getElementById("newPassword")
-        .value;
-        
-        
-        const role =
-        document.getElementById("newRole")
-        .value;
-        
-        
-        const status =
-        document.getElementById("newStatus")
-        .value;
-        
-        
-        const message =
-        document.getElementById("formMessage");
-        
-        
-        if (password.length < 8) {
-            
-            message.hidden = false;
-            
-            message.textContent =
-            "A jelszónak legalább 8 karakter hosszúnak kell lennie.";
-            
-            return;
-        }
-        
-        
-        if (
-        users.some(
-        user =>
-        user.username.toLowerCase() ===
-        username.toLowerCase()
-        )
-        ) {
-            
-            message.hidden = false;
-            
-            message.textContent =
-            "Ez a felhasználónév már létezik.";
-            
-            return;
-        }
-        
-        
-        users.push({
-            
-            id: Date.now(),
-            
-            name,
-            
-            username,
-            
-            email,
-            
-            role,
-            
-            status
-            
-            // A jelszó backendben legyen kezelve.
-            
+
+
+        // Újra inaktív
+        inputs.forEach(input => {
+            input.disabled = true;
         });
-        
-        
-        event.target.reset();
-        
+
+
+        // Vissza a szerkesztés ikonra
+        btn.textContent = "🔧";
+        btn.dataset.editing = "false";
+    }
+}
+
+/* =========================
+MÓDOSÍTÁS MENTÉSE
+========================= */
+
+function saveUser(id, button) {
+
+const row =
+    button.closest("tr");
+
+
+const user =
+    users.find(item => item.id === id);
+
+
+if (!user) return;
+
+
+const name =
+    row.querySelector(
+        '[data-field="name"]'
+    ).value.trim();
+
+
+const username =
+    row.querySelector(
+        '[data-field="username"]'
+    ).value.trim();
+
+
+const email =
+    row.querySelector(
+        '[data-field="email"]'
+    ).value.trim();
+
+
+const role =
+    row.querySelector(
+        '[data-field="role"]'
+    ).value;
+
+
+if (!name || !username || !email) {
+
+    alert(
+        "A név, felhasználónév és e-mail cím kitöltése kötelező."
+    );
+
+    return;
+}
+
+
+user.name =
+    name;
+
+user.username =
+    username;
+
+user.email =
+    email;
+
+user.role =
+    role;
+
+
+/*
+ * Mezők újra letiltása.
+ */
+
+row.querySelectorAll(
+    '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
+).forEach(input => {
+
+    input.disabled = true;
+
+    input.dataset.originalValue =
+        input.value;
+
+});
+
+
+/*
+ * Gombok visszaállítása.
+ */
+
+row.querySelector(".edit-btn").hidden = false;
+
+row.querySelector(".save-btn").hidden = true;
+
+row.querySelector(".cancel-btn").hidden = true;
+
+}
+
+/* =========================
+Módosítás visszavonása
+========================= */
+
+function cancelEdit(id, button) {
+
+const row =
+    button.closest("tr");
+
+
+if (!row) return;
+
+
+row.querySelectorAll(
+    '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
+).forEach(input => {
+
+    input.value =
+        input.dataset.originalValue;
+
+    input.disabled = true;
+
+});
+
+
+row.querySelector(".edit-btn").hidden = false;
+
+row.querySelector(".save-btn").hidden = true;
+
+row.querySelector(".cancel-btn").hidden = true;
+
+}
+
+/* =========================
+FELHASZNÁLÓ TÖRLÉSE
+========================= */
+
+function deleteUser(id) {
+    
+    
+    const user =
+    users.find(item => item.id === id);
+    
+    
+    if (!user) return;
+    
+    
+    const confirmed =
+    confirm(
+        `Biztosan törölni szeretnéd a felhasználót?\n\n${user.name}`
+    );
+    
+    
+    if (!confirmed) return;
+    
+    
+    users =
+    users.filter(
+        item => item.id !== id
+    );
+    
+    
+    renderUsers();
+    
+    
+}
+
+/* =========================
+ÚJ FELHASZNÁLÓ
+========================= */
+
+document
+.getElementById("addUserForm")
+.addEventListener("submit", event => {
+    
+    
+    event.preventDefault();
+    
+    
+    const name =
+    document.getElementById("newName")
+    .value.trim();
+    
+    
+    const username =
+    document.getElementById("newUsername")
+    .value.trim();
+    
+    
+    const email =
+    document.getElementById("newEmail")
+    .value.trim();
+    
+    
+    const password =
+    document.getElementById("newPassword")
+    .value;
+    
+    
+    const passwordConfirm =
+    document.getElementById("newPasswordConfirm")
+    .value;
+    
+    
+    const role =
+    document.getElementById("newRole")
+    .value;
+    
+    
+    const message =
+    document.getElementById("formMessage");
+    
+    
+    if (password.length < 8) {
         
         message.hidden = false;
         
         message.textContent =
-        "A felhasználó sikeresen hozzáadva.";
+        "A jelszónak legalább 8 karakter hosszúnak kell lennie.";
         
+        return;
+    }
+    
+    
+    if (password !== passwordConfirm) {
         
-        renderUsers();
+        message.hidden = false;
+        
+        message.textContent =
+        "A két jelszó nem egyezik.";
+        
+        return;
+    }
+    
+    
+    if (!role) {
+        
+        message.hidden = false;
+        
+        message.textContent =
+        "A jogosultság kiválasztása kötelező.";
+        
+        return;
+    }
+    
+    
+    if (
+        users.some(
+            user =>
+                user.username.toLowerCase() ===
+            username.toLowerCase()
+        )
+    ) {
+        
+        message.hidden = false;
+        
+        message.textContent =
+        "Ez a felhasználónév már létezik.";
+        
+        return;
+    }
+    
+    
+    users.push({
+        
+        id: Date.now(),
+        
+        name,
+        
+        username,
+        
+        email,
+        
+        role
+        
+        /*
+        * A jelszó backendben legyen kezelve.
+        */
         
     });
     
     
-    /* =========================
-    KERESÉS
-    ========================= */
+    event.target.reset();
     
-    searchInput.addEventListener(
-    "input",
+    
+    message.hidden = false;
+    
+    message.textContent =
+    "A felhasználó sikeresen hozzáadva.";
+    
+    
+    renderUsers();
+    
+});
+
+
+/* =========================
+KERESÉS
+========================= */
+
+searchInput.addEventListener(
+"input",
     renderUsers
-    );
+);
+
+/* =========================
+JELSZÓ MUTATÁSA
+========================= */
+
+document
+.querySelectorAll(".toggle-password")
+.forEach(button => {
     
     
-    /* =========================
-    JELSZÓ MUTATÁSA
-    ========================= */
-    
-    document
-    .querySelectorAll(".toggle-password")
-    .forEach(button => {
-        
-        button.addEventListener(
+    button.addEventListener(
         "click",
         () => {
             
             const input =
             document.getElementById(
-            button.dataset.target
+                button.dataset.target
             );
             
             
@@ -490,36 +654,38 @@
             : "◌";
             
         }
-        );
-        
-    });
+    );
+    
+});
+
+
+/* =========================
+HTML ESCAPE
+========================= */
+
+function escapeHtml(value) {
     
     
-    /* =========================
-    HTML ESCAPE
-    ========================= */
-    
-    function escapeHtml(value) {
-        
-        return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-        
-    }
+    return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
     
     
-    function escapeAttribute(value) {
-        
-        return escapeHtml(value);
-        
-    }
+}
+
+function escapeAttribute(value) {
     
     
-    /* =========================
-    INDÍTÁS
-    ========================= */
+    return escapeHtml(value);
     
-    renderUsers();
+    
+}
+
+/* =========================
+INDÍTÁS
+========================= */
+
+renderUsers();

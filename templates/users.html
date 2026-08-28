@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PrinterSCOUT – Felhasználók</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/users.css') }}">
     <script src="{{ url_for('static', filename='js/users.js') }}" defer></script>
     
@@ -29,128 +30,165 @@
     
     <main class="page">
         
-        <section class="content">
+        <section class="form-card">
             
-            <div class="admin-content">
+            <div class="section-header">
+                <h2>Új felhasználó</h2>
+            </div>
+            <form class="user-form" id="addUserForm">
                 
-                <div class="admin-header">
+                <div class="form-grid">
                     
-                    <div class="admin-title">
-                        <h1>Felhasználók</h1>
-                        <p>
-                            Felhasználók hozzáadása, módosítása és törlése.
-                        </p>
+                    
+                    <div class="field">
+                        
+                        <label for="newName">
+                            Név
+                        </label>
+                        
+                        <input
+                        id="newName"
+                        type="text"
+                        placeholder="Teljes név"
+                        required
+                        >
+                        
+                    </div>
+                    
+                    
+                    <div class="field">
+                        
+                        <label for="newUsername">
+                            Felhasználónév
+                        </label>
+                        
+                        <input
+                        id="newUsername"
+                        type="text"
+                        placeholder="Felhasználónév"
+                        required
+                        >
+                        
+                    </div>
+                    
+                    
+                    <div class="field">
+                        
+                        <label for="newEmail">
+                            E-mail cím
+                        </label>
+                        
+                        <input
+                        id="newEmail"
+                        type="email"
+                        placeholder="pelda@email.hu"
+                        required
+                        >
+                        
+                    </div>
+                    
+                    
+                    <div class="field">
+                        
+                        <label for="newRole">
+                            Jogosultság
+                        </label>
+                        
+                        <select id="newRole" class="select-input" required>
+                            <option value="" selected disabled hidden>Válassz jogosultságot</option>
+                            <option value="user">Felhasználó</option>
+                            <option value="admin">Rendszergazda</option>
+                        </select>
+                        
+                    </div>
+                    
+                    
+                    <div class="field">
+                        
+                        <label for="newPassword">
+                            Jelszó
+                        </label>
+                        
+                        <div class="password-wrap">
+                            
+                            <input
+                            id="newPassword"
+                            type="password"
+                            placeholder="Jelszó"
+                            minlength="8"
+                            required
+                            >
+                            
+                            <button
+                            type="button"
+                            class="toggle-password"
+                            data-target="newPassword"
+                            aria-label="Jelszó megjelenítése"
+                            >
+                            ◉
+                        </button>
+                        
                     </div>
                     
                 </div>
                 
                 
-                <!-- =========================
-                ÚJ FELHASZNÁLÓ
-                ========================= -->
-                
-                <section class="form-card">
+                <div class="field">
                     
-                    <div class="section-header">
-                        <h2>Új felhasználó</h2>
-                        <p>
-                            A létrehozott felhasználó végleges jelszóval fog rendelkezni.
-                        </p>
-                    </div>
+                    <label for="newPasswordConfirm">
+                        Jelszó megerősítése
+                    </label>
                     
-                    <form class="user-form" id="addUserForm">
+                    <div class="password-wrap">
                         
-                        <div class="form-grid">
-                            
-                            <div class="field">
-                                <label for="newName">Név</label>
-                                
-                                <input
-                                id="newName"
-                                type="text"
-                                placeholder="Teljes név"
-                                required
-                                >
-                            </div>
-                            
-                            
-                            <div class="field">
-                                <label for="newUsername">Felhasználónév</label>
-                                
-                                <input
-                                id="newUsername"
-                                type="text"
-                                placeholder="Felhasználónév"
-                                required
-                                >
-                            </div>
-                            
-                            
-                            <div class="field">
-                                <label for="newEmail">E-mail cím</label>
-                                
-                                <input
-                                id="newEmail"
-                                type="email"
-                                placeholder="pelda@email.hu"
-                                required
-                                >
-                            </div>
-                            
-                            
-                            <div class="field">
-                                
-                                <label for="newPassword">
-                                    Jelszó
-                                </label>
-                                
-                                <div class="password-wrap">
-                                    
-                                    <input
-                                    id="newPassword"
-                                    type="password"
-                                    placeholder="Jelszó"
-                                    minlength="8"
-                                    required
-                                    >
-                                    
-                                    <button
-                                    type="button"
-                                    class="toggle-password"
-                                    data-target="newPassword"
-                                    aria-label="Jelszó megjelenítése"
-                                    >
-                                    ◉
-                                </button>
-                                
-                            </div>
-                            
-                        </div>                 
+                        <input
+                        id="newPasswordConfirm"
+                        type="password"
+                        placeholder="Jelszó ismét"
+                        minlength="8"
+                        required
+                        >
+                        
+                        <button
+                        type="button"
+                        class="toggle-password"
+                        data-target="newPasswordConfirm"
+                        aria-label="Jelszó megjelenítése"
+                        >
+                        ◉
+                    </button>
+                    
+                </div>
                 
             </div>
             
             
-            <div class="form-actions">
-                
-                <button
-                class="primary-btn"
-                type="submit"
-                >
-                Felhasználó hozzáadása
-            </button>
-            
         </div>
         
         
-        <div
-        class="message"
-        id="formMessage"
-        hidden
-        ></div>
+        <div class="form-actions">
+            
+            <button
+            class="primary-btn"
+            type="submit"
+            >
+            Felhasználó hozzáadása
+        </button>
         
-    </form>
+    </div>
     
+    
+    <div
+    class="message"
+    id="formMessage"
+    hidden
+    ></div>
+    
+    
+</form>
+
 </section>
+
 
 
 <!-- =========================
@@ -161,11 +199,15 @@ FELHASZNÁLÓK LISTÁJA
     
     <div class="users-toolbar">
         
-        <input
-        id="searchInput"
-        type="search"
-        placeholder="Felhasználó keresése..."
-        >
+        <div class="search-wrapper">
+            <input
+            class="modalinput"
+            type="text"
+            id="searchInput"
+            placeholder="Keresés..."
+            oninput="filterTable()"
+            >
+        </div>
         
         <span
         class="user-count"
@@ -177,35 +219,39 @@ FELHASZNÁLÓK LISTÁJA
     
     <div class="table-wrap">
         
-        <table class="users-table">
-            
-            <thead>
-                
-                <tr>
-                    <th>Név</th>
-                    <th>Felhasználónév</th>
-                    <th>E-mail</th>
-                    <th>Műveletek</th>
-                </tr>
-                
-            </thead>
-            
-            <tbody id="usersBody"></tbody>
-            
-        </table>
-        
-        
-        <div
-        class="empty-state"
-        id="emptyState"
-        hidden
+        <table
+        class="users-table"
+        id="usersTable"
         >
-        Nincs találat.
-    </div>
+        
+        <thead>
+            <tr>
+                <th>Név</th>
+                <th>Felhasználónév</th>
+                <th>E-mail</th>
+                <th>Jogosultság</th>
+                <th>Jelszó</th>
+                <th>Műveletek</th>
+            </tr>
+        </thead>
+        
+        <tbody id="usersBody"></tbody>
+        
+    </table>
     
+    
+    <div
+    class="empty-state"
+    id="emptyState"
+    hidden
+    >
+    Nincs találat.
+</div>
+
 </div>
 
 </section>
+
 
 </div>
 
