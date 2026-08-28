@@ -1124,6 +1124,9 @@ def index():
         felhasznalonev=current_user.username
     )
 
+@app.route('/users')
+def users():
+    return render_template('users.html')
 
 @app.route("/logout")
 @login_required
