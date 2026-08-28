@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrinterSCOUT – Felhasználók</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/users.css') }}">
+    <script src="{{ url_for('static', filename='js/users.js') }}" defer></script>
+    
+    
+</head>
+<body>
+    
+    <header class="topbar">
+        
+        <div class="menu" aria-label="Menü">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        
+        <div class="brand">
+            <span class="printer">🖨️</span>
+            <span>PrinterSCOUT - Felhasználók</span>
+        </div>
+        
+    </header>
+    
+    <main class="page">
+        
+        <section class="content">
+            
+            <div class="admin-content">
+                
+                <div class="admin-header">
+                    
+                    <div class="admin-title">
+                        <h1>Felhasználók</h1>
+                        <p>
+                            Felhasználók hozzáadása, módosítása és törlése.
+                        </p>
+                    </div>
+                    
+                </div>
+                
+                
+                <!-- =========================
+                ÚJ FELHASZNÁLÓ
+                ========================= -->
+                
+                <section class="form-card">
+                    
+                    <div class="section-header">
+                        <h2>Új felhasználó</h2>
+                        <p>
+                            A létrehozott felhasználó végleges jelszóval fog rendelkezni.
+                        </p>
+                    </div>
+                    
+                    <form class="user-form" id="addUserForm">
+                        
+                        <div class="form-grid">
+                            
+                            <div class="field">
+                                <label for="newName">Név</label>
+                                
+                                <input
+                                id="newName"
+                                type="text"
+                                placeholder="Teljes név"
+                                required
+                                >
+                            </div>
+                            
+                            
+                            <div class="field">
+                                <label for="newUsername">Felhasználónév</label>
+                                
+                                <input
+                                id="newUsername"
+                                type="text"
+                                placeholder="Felhasználónév"
+                                required
+                                >
+                            </div>
+                            
+                            
+                            <div class="field">
+                                <label for="newEmail">E-mail cím</label>
+                                
+                                <input
+                                id="newEmail"
+                                type="email"
+                                placeholder="pelda@email.hu"
+                                required
+                                >
+                            </div>
+                            
+                            
+                            <div class="field">
+                                
+                                <label for="newPassword">
+                                    Jelszó
+                                </label>
+                                
+                                <div class="password-wrap">
+                                    
+                                    <input
+                                    id="newPassword"
+                                    type="password"
+                                    placeholder="Jelszó"
+                                    minlength="8"
+                                    required
+                                    >
+                                    
+                                    <button
+                                    type="button"
+                                    class="toggle-password"
+                                    data-target="newPassword"
+                                    aria-label="Jelszó megjelenítése"
+                                    >
+                                    ◉
+                                </button>
+                                
+                            </div>
+                            
+                        </div>                 
+                
+            </div>
+            
+            
+            <div class="form-actions">
+                
+                <button
+                class="primary-btn"
+                type="submit"
+                >
+                Felhasználó hozzáadása
+            </button>
+            
+        </div>
+        
+        
+        <div
+        class="message"
+        id="formMessage"
+        hidden
+        ></div>
+        
+    </form>
+    
+</section>
+
+
+<!-- =========================
+FELHASZNÁLÓK LISTÁJA
+========================= -->
+
+<section class="users-card">
+    
+    <div class="users-toolbar">
+        
+        <input
+        id="searchInput"
+        type="search"
+        placeholder="Felhasználó keresése..."
+        >
+        
+        <span
+        class="user-count"
+        id="userCount"
+        ></span>
+        
+    </div>
+    
+    
+    <div class="table-wrap">
+        
+        <table class="users-table">
+            
+            <thead>
+                
+                <tr>
+                    <th>Név</th>
+                    <th>Felhasználónév</th>
+                    <th>E-mail</th>
+                    <th>Műveletek</th>
+                </tr>
+                
+            </thead>
+            
+            <tbody id="usersBody"></tbody>
+            
+        </table>
+        
+        
+        <div
+        class="empty-state"
+        id="emptyState"
+        hidden
+        >
+        Nincs találat.
+    </div>
+    
+</div>
+
+</section>
+
+</div>
+
+</section>
+
+</main>
+
+</body>
+</html>
