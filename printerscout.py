@@ -46,10 +46,11 @@ live_updates_lock = threading.Lock()
 
 class User(UserMixin):
 
-    def __init__(self, username, password_hash):
+    def __init__(self, username, password_hash, isadmin=False):
         self.id = username
         self.username = username
         self.password_hash = password_hash
+        self.isadmin = isadmin
 
 def invalidate_cache():
     global results
@@ -354,7 +355,7 @@ def login():
 
             cursor.execute(
                 """
-                SELECT felhasznalonev, jelszo
+                SELECT felhasznalonev, jelszo, isadmin
                 FROM felhasznalok
                 WHERE felhasznalonev = %s
                 """,
@@ -369,6 +370,7 @@ def login():
 
                 db_username = result[0]
                 stored_password = result[1]
+                isadmin = result[2]
 
                 if bcrypt.checkpw(
                     password.encode("utf-8"),
@@ -377,7 +379,8 @@ def login():
 
                     user = User(
                         username=db_username,
-                        password_hash=stored_password
+                        password_hash=stored_password,
+                        isadmin=isadmin
                     )
 
                     remember = request.form.get("remember") == "on"
@@ -1084,7 +1087,7 @@ def load_user(user_id):
 
         cursor.execute(
             """
-            SELECT felhasznalonev, jelszo
+            SELECT felhasznalonev, jelszo, isadmin
             FROM felhasznalok
             WHERE felhasznalonev = %s
             """,
@@ -1098,7 +1101,8 @@ def load_user(user_id):
 
         return User(
             username=result[0],
-            password_hash=result[1]
+            password_hash=result[1],
+            isadmin=result[2]
         )
 
     except Exception as e:

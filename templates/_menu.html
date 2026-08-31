@@ -42,6 +42,16 @@
         Oldalszám exportálása
     </button>
 
+    <button onclick="(toggleModal(),window.open('/get_full_diff'))">
+        Oldalszám exportálása
+    </button>
+
+    {% if current_user.isadmin %}
+    <button onclick="document.location='users'">
+        Felhasználók kezelése
+    </button>
+    {% endif %}
+
     <form action="{{ url_for('logout') }}" method="GET">
         <button type="submit">
             Kijelentkezés
