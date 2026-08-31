@@ -94,11 +94,7 @@ body {
     padding-top: 55px;
 }
 
-/*
-   Az általad küldött HTML-ben nincs
-   .content wrapper, ezért közvetlenül
-   a .page alatt is középre tesszük.
-*/
+
 .page > section {
     width: min(1180px, 100%);
     margin-left: auto;
@@ -204,46 +200,26 @@ body {
     cursor: pointer;
 }
 
-/* =========================
-   JELSZÓ
-========================= */
-
-.password-wrap {
-    position: relative;
+.password-field {
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
-.password-wrap input {
-    padding-right: 50px;
+.password-field input {
+    flex: 1;
+    min-width: 0;
 }
 
-.toggle-password {
-    position: absolute;
-    top: 50%;
-    right: 12px;
-
-    transform: translateY(-50%);
-
-    border: 0 !important;
-    background: transparent !important;
-
-    color: #91a0b5;
-
+.password-field button {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 0;
+    padding: 0 8px;
+    margin: 0;
     cursor: pointer;
-
     font-size: 18px;
-    padding: 6px !important;
-    margin: 0 !important;
-
-    width: auto !important;
-    height: auto !important;
-
-    box-shadow: none !important;
 }
-
-.toggle-password:hover {
-    color: var(--text);
-}
-
 /* =========================
    FORM GOMB
 ========================= */
@@ -324,11 +300,6 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-.search-wrapper {
-    flex: 1;
-    min-width: 0;
-    max-width: 500px;
-}
 
 .users-toolbar input#searchInput {
     width: 100%;
@@ -512,7 +483,6 @@ body {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-
     background-image: none;
     cursor: default;
 }
@@ -523,19 +493,12 @@ body {
 
 .badge {
     display: inline-flex;
-
     align-items: center;
-
     min-height: 26px;
-
     padding: 0 9px;
-
     border-radius: 999px;
-
     background: rgba(39, 104, 232, 0.14);
-
     color: #83adff;
-
     font-size: 11px;
     font-weight: 700;
 }
@@ -571,15 +534,10 @@ body {
 
 .users-table .actions button {
     margin: 0;
-
     flex: 0 0 auto;
-
     height: 38px;
-
     padding: 0 13px;
-
     border-radius: 5px;
-
     font-size: 13px;
 }
 
@@ -589,11 +547,8 @@ body {
 
 .empty-state {
     padding: 40px 20px;
-
     text-align: center;
-
     color: var(--muted);
-
     font-size: 14px;
 }
 
@@ -649,10 +604,6 @@ body {
 
         padding-left: 22px;
         padding-right: 22px;
-    }
-
-    .search-wrapper {
-        max-width: none;
     }
 
     .users-toolbar input#searchInput {

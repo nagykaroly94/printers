@@ -43,40 +43,40 @@ FELHASZNÁLÓK MEGJELENÍTÉSE
 ========================= */
 
 function renderUsers() {
-
-const search =
+    
+    const search =
     searchInput.value
     .trim()
     .toLowerCase();
-
-
-const filtered =
+    
+    
+    const filtered =
     users.filter(user =>
         user.name.toLowerCase().includes(search) ||
         user.username.toLowerCase().includes(search) ||
         user.email.toLowerCase().includes(search)
     );
-
-
-usersBody.innerHTML = "";
-
-
-userCount.textContent =
+    
+    
+    usersBody.innerHTML = "";
+    
+    
+    userCount.textContent =
     `${filtered.length} / ${users.length} felhasználó`;
-
-
-emptyState.hidden =
+    
+    
+    emptyState.hidden =
     filtered.length !== 0;
-
-
-filtered.forEach(user => {
-
-    const row =
+    
+    
+    filtered.forEach(user => {
+        
+        const row =
         document.createElement("tr");
-
-
-    row.innerHTML = `
-
+        
+        
+        row.innerHTML = `
+        
         <td>
             <input
                 class="inline-input"
@@ -85,8 +85,8 @@ filtered.forEach(user => {
                 disabled
             >
         </td>
-
-
+        
+        
         <td>
             <input
                 class="inline-input"
@@ -95,8 +95,8 @@ filtered.forEach(user => {
                 disabled
             >
         </td>
-
-
+        
+        
         <td>
             <input
                 class="inline-input"
@@ -106,8 +106,8 @@ filtered.forEach(user => {
                 disabled
             >
         </td>
-
-
+        
+        
         <td>
             <select
                 class="inline-select"
@@ -120,7 +120,7 @@ filtered.forEach(user => {
                 >
                     User
                 </option>
-
+        
                 <option
                     value="admin"
                     ${user.role === "admin" ? "selected" : ""}
@@ -129,25 +129,18 @@ filtered.forEach(user => {
                 </option>
             </select>
         </td>
-
-
+        
+        
         <td>
-
+        
+            <div class="actions">
             <button
                 class="primary-btn"
                 type="button"
                 onclick="setNewPassword(${user.id})"
             >
-                Jelszó módosítása
+                🔐
             </button>
-
-        </td>
-
-
-        <td>
-
-            <div class="actions">
-
                 <button
                     class="primary-btn"
                     type="button"
@@ -155,7 +148,7 @@ filtered.forEach(user => {
                 >
                     🔧
                 </button>
-
+        
                 <button
                     class="primary-btn"
                     type="button"
@@ -163,18 +156,18 @@ filtered.forEach(user => {
                 >
                     ❌
                 </button>
-
+        
             </div>
-
+        
         </td>
-
+        
     `;
-
-
-    usersBody.appendChild(row);
-
-});
-
+        
+        
+        usersBody.appendChild(row);
+        
+    });
+    
 }
 
 /* =========================
@@ -249,73 +242,73 @@ FELHASZNÁLÓ MÓDOSÍTÁSA
 ========================= */
 
 function editUser(id, btn) {
-
+    
     const row = btn.closest("tr");
-
+    
     const inputs = row.querySelectorAll(
         'input[data-field], select[data-field]'
     );
-
+    
     const editing = btn.dataset.editing === "true";
-
+    
     if (!editing) {
-
+        
         // Szerkesztés bekapcsolása
         inputs.forEach(input => {
             input.disabled = false;
         });
-
+        
         btn.textContent = "💾";
         btn.dataset.editing = "true";
-
+        
     } else {
-
+        
         // Mentés
         const user = users.find(
             item => item.id === id
         );
-
+        
         if (!user) return;
-
+        
         const name = row
-            .querySelector('[data-field="name"]')
-            .value.trim();
-
+        .querySelector('[data-field="name"]')
+        .value.trim();
+        
         const username = row
-            .querySelector('[data-field="username"]')
-            .value.trim();
-
+        .querySelector('[data-field="username"]')
+        .value.trim();
+        
         const email = row
-            .querySelector('[data-field="email"]')
-            .value.trim();
-
+        .querySelector('[data-field="email"]')
+        .value.trim();
+        
         const role = row
-            .querySelector('[data-field="role"]')
-            .value;
-
-
+        .querySelector('[data-field="role"]')
+        .value;
+        
+        
         if (!name || !username || !email) {
-
+            
             alert(
                 "A név, felhasználónév és e-mail cím kitöltése kötelező."
             );
-
+            
             return;
         }
-
-
+        
+        
         user.name = name;
         user.username = username;
         user.email = email;
         user.role = role;
-
-
+        
+        
         // Újra inaktív
         inputs.forEach(input => {
             input.disabled = true;
         });
-
-
+        
+        
         // Vissza a szerkesztés ikonra
         btn.textContent = "🔧";
         btn.dataset.editing = "false";
@@ -327,91 +320,91 @@ MÓDOSÍTÁS MENTÉSE
 ========================= */
 
 function saveUser(id, button) {
-
-const row =
+    
+    const row =
     button.closest("tr");
-
-
-const user =
+    
+    
+    const user =
     users.find(item => item.id === id);
-
-
-if (!user) return;
-
-
-const name =
+    
+    
+    if (!user) return;
+    
+    
+    const name =
     row.querySelector(
         '[data-field="name"]'
     ).value.trim();
-
-
-const username =
+    
+    
+    const username =
     row.querySelector(
         '[data-field="username"]'
     ).value.trim();
-
-
-const email =
+    
+    
+    const email =
     row.querySelector(
         '[data-field="email"]'
     ).value.trim();
-
-
-const role =
+    
+    
+    const role =
     row.querySelector(
         '[data-field="role"]'
     ).value;
-
-
-if (!name || !username || !email) {
-
-    alert(
-        "A név, felhasználónév és e-mail cím kitöltése kötelező."
-    );
-
-    return;
-}
-
-
-user.name =
+    
+    
+    if (!name || !username || !email) {
+        
+        alert(
+            "A név, felhasználónév és e-mail cím kitöltése kötelező."
+        );
+        
+        return;
+    }
+    
+    
+    user.name =
     name;
-
-user.username =
+    
+    user.username =
     username;
-
-user.email =
+    
+    user.email =
     email;
-
-user.role =
+    
+    user.role =
     role;
-
-
-/*
- * Mezők újra letiltása.
- */
-
-row.querySelectorAll(
-    '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
-).forEach(input => {
-
-    input.disabled = true;
-
-    input.dataset.originalValue =
+    
+    
+    /*
+    * Mezők újra letiltása.
+    */
+    
+    row.querySelectorAll(
+        '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
+    ).forEach(input => {
+        
+        input.disabled = true;
+        
+        input.dataset.originalValue =
         input.value;
-
-});
-
-
-/*
- * Gombok visszaállítása.
- */
-
-row.querySelector(".edit-btn").hidden = false;
-
-row.querySelector(".save-btn").hidden = true;
-
-row.querySelector(".cancel-btn").hidden = true;
-
+        
+    });
+    
+    
+    /*
+    * Gombok visszaállítása.
+    */
+    
+    row.querySelector(".edit-btn").hidden = false;
+    
+    row.querySelector(".save-btn").hidden = true;
+    
+    row.querySelector(".cancel-btn").hidden = true;
+    
 }
 
 /* =========================
@@ -419,32 +412,32 @@ Módosítás visszavonása
 ========================= */
 
 function cancelEdit(id, button) {
-
-const row =
+    
+    const row =
     button.closest("tr");
-
-
-if (!row) return;
-
-
-row.querySelectorAll(
-    '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
-).forEach(input => {
-
-    input.value =
+    
+    
+    if (!row) return;
+    
+    
+    row.querySelectorAll(
+        '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
+    ).forEach(input => {
+        
+        input.value =
         input.dataset.originalValue;
-
-    input.disabled = true;
-
-});
-
-
-row.querySelector(".edit-btn").hidden = false;
-
-row.querySelector(".save-btn").hidden = true;
-
-row.querySelector(".cancel-btn").hidden = true;
-
+        
+        input.disabled = true;
+        
+    });
+    
+    
+    row.querySelector(".edit-btn").hidden = false;
+    
+    row.querySelector(".save-btn").hidden = true;
+    
+    row.querySelector(".cancel-btn").hidden = true;
+    
 }
 
 /* =========================
@@ -622,43 +615,28 @@ searchInput.addEventListener(
 /* =========================
 JELSZÓ MUTATÁSA
 ========================= */
+document.querySelectorAll('input[type="password"]').forEach(input => {
 
-document
-.querySelectorAll(".toggle-password")
-.forEach(button => {
-    
-    
-    button.addEventListener(
-        "click",
-        () => {
-            
-            const input =
-            document.getElementById(
-                button.dataset.target
-            );
-            
-            
-            const visible =
-            input.type === "text";
-            
-            
-            input.type =
-            visible
-            ? "password"
-            : "text";
-            
-            
-            button.textContent =
-            visible
-            ? "◉"
-            : "◌";
-            
-        }
-    );
-    
+    const div = input.parentElement;
+    div.classList.add('password-field');
+
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.textContent = '👀';
+
+    button.addEventListener('click', () => {
+
+        const visible = input.type === 'text';
+
+        input.type = visible ? 'password' : 'text';
+        button.textContent = visible ? '👀' : '🫣';
+
+    });
+
+    div.appendChild(button);
+
 });
-
-
 /* =========================
 HTML ESCAPE
 ========================= */

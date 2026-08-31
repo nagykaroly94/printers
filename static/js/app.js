@@ -296,7 +296,6 @@ function updateRow(data) {
     row.querySelector('[data-field="type"]').textContent = data.type || "N/A";
     row.querySelector('[data-field="serial"]').textContent = data.serial || "N/A";
     row.querySelector('[data-field="pages"]').textContent = data.pages || "N/A";
-    row.querySelector('[data-field="ip"]').textContent = data.ip || "N/A";
 
     row.querySelector('[data-field="rogzitve"]').textContent = formatDate(data.rogzitve) || "N/A";
 }
@@ -316,14 +315,6 @@ function saveMonthly() {
         });
 }
 
-/* -------------------------
-MENU
-------------------------- */
-function toggleMenu(icon) {
-    const menu = document.getElementById("hamburgerMenu");
-    menu.classList.toggle("open");
-    icon.classList.toggle("open");
-}
 
 /* -------------------------
 PAGINATION

@@ -1,0 +1,51 @@
+<div class="hamburger" onclick="toggleMenu(this)">
+    <div></div>
+    <div></div>
+    <div></div>
+</div>
+
+<div class="menu" id="hamburgerMenu">
+
+    <button onclick="(toggleModal(),start(),index())">
+        Nyomtatók frissítése
+    </button>
+
+    <button onclick="(toggleModal(),openListModal())">
+        Nyomtatók kezelése
+    </button>
+
+    <button onclick="(toggleModal(),openListModaltabla())">
+        Csoport kezelése
+    </button>
+
+    <button onclick="(toggleModal(),openCsoportModal())">
+        Csoportok hozzáadása
+    </button>
+
+    <button onclick="(toggleModal(),openManageModal('cim'))">
+        Címek kezelése
+    </button>
+
+    <button onclick="(toggleModal(),openManageModal('uzemelteto'))">
+        Üzemeltetők kezelése
+    </button>
+
+    <button onclick="(toggleModal(),openRelationsModal(1))">
+        Kapcsolatok kezelése
+    </button>
+
+    <button onclick="(toggleModal(),saveMonthly())">
+        Oldalszám rögzítése
+    </button>
+
+    <button onclick="(toggleModal(),window.open('/get_full_diff'))">
+        Oldalszám exportálása
+    </button>
+
+    <form action="{{ url_for('logout') }}" method="GET">
+        <button type="submit">
+            Kijelentkezés
+        </button>
+    </form>
+
+</div>
