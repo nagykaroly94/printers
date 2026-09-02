@@ -38,7 +38,13 @@ function showToast(message) {
 /* -------------------------
 START
 ------------------------- */
+
 function start() {
+    if (window.location.pathname !== "/index") {
+        window.location.href = "/index?autostart=1";
+        return;
+    }
+
     fetch("/start");
 
     if (timer) {
@@ -54,6 +60,15 @@ function start() {
 
     timer = setInterval(update, 1000);
 }
+
+window.addEventListener("load", function () {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("autostart") === "1") {
+        start();
+    }
+});
+
 function formatDate(dt) {
     if (!dt || dt === "N/A") return "N/A";
 
