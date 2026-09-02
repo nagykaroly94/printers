@@ -6,8 +6,10 @@ let rowState = {};
 INIT
 ------------------------- */
 window.onload = function () {
-    loadInitial();
-    document.getElementById("bar").style.width = "0%";
+    if (window.location.pathname == "/index") {
+        loadInitial();
+        document.getElementById("bar").style.width = "0%";
+    }
 };
 
 
