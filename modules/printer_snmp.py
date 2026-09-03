@@ -5,7 +5,7 @@ https://www.alvestrand.no/objectid/1.3.6.1.4.1.html
 """
 import json
 import os
-from pysnmp.hlapi.v3arch.asyncio import SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, get_cmd
+from pysnmp.hlapi.v3arch.asyncio import SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, get_cmd  
 
 class SNMPError(Exception):
     """Általános SNMP lekérdezési hiba."""
@@ -48,6 +48,17 @@ def validate_vendor_oids(data):
             for field in ("counter_oid", "serial_oid"):
                 if field in model_config: validate_oid(f"{vendor}.models.{model}.{field}", model_config[field])
 
+def load_vendor_oids():
+    """Betölti és validálja az SNMP vendor OID konfigurációt."""
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "snmp_vendor_oids.json"), "r", encoding="utf-8") as f: vendor_oids = json.load(f)
+        validate_vendor_oids(vendor_oids)
+        return vendor_oids
+    except FileNotFoundError as exc: raise RuntimeError("Az snmp_vendor_oids.json fájl nem található.") from exc
+    except OSError as exc: raise RuntimeError(f"Nem sikerült beolvasni az snmp_vendor_oids.json fájlt: {exc}") from exc
+    except json.JSONDecodeError as exc: raise RuntimeError(f"Hibás JSON: {exc.msg} sor: {exc.lineno}, oszlop: {exc.colno}") from exc
+    except ValueError as exc: raise RuntimeError(f"Hibás SNMP vendor konfiguráció: {exc}") from exc
+
 async def snmp_query(ip, oid, timeout=5, retries=2):
     """Egyetlen SNMP OID olvasása adott IP-címről, hiba esetén SNMPError kivételt dob."""
     transport = await UdpTransportTarget.create((ip, 161), timeout=timeout, retries=retries,)
@@ -59,7 +70,11 @@ async def snmp_query(ip, oid, timeout=5, retries=2):
 
 async def snmp_get(ip, oid) -> str:
     """String wrapper az snmp_query methódusra"""
-    return str(await snmp_query(ip, oid))
+    value = await snmp_query(ip, oid)
+    if value is None: return ""
+    value = str(value).strip()
+    if value.lower() == "none": return ""
+    return value
 
 async def get_printer_vendor_IANA_PEN(ip):
     """Gyártói PEN lekérése, hiba esetén SNMPError kivételt dob."""
@@ -77,24 +92,16 @@ def cleanup_model_name(text:str):
 
 async def get_printer_data(ip):
     """Visszaadja a nyomtató típusát, a számlálójának értékét és a gyári sorozatszámát."""
-    try:
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "snmp_vendor_oids.json"), "r", encoding="utf-8") as f: vendor_oids = json.load(f)
-        validate_vendor_oids(vendor_oids)
+    vendor_config = vendor_oids.get(await get_printer_vendor_IANA_PEN(ip), vendor_oids["Generic"])
+    model = cleanup_model_name(await snmp_get(ip, vendor_config["model_oid"]))
+    model_config = vendor_config["models"].get(model, {})
 
-        vendor_config = vendor_oids.get(await get_printer_vendor_IANA_PEN(ip), vendor_oids["Generic"])
-        model = cleanup_model_name(await snmp_get(ip, vendor_config["model_oid"]))
-        model_config = vendor_config["models"].get(model, {})
+    counter_oid = model_config.get("counter_oid", vendor_config["counter_oid"])
+    serial_oid = model_config.get("serial_oid", vendor_config["serial_oid"])
 
-        counter_oid = model_config.get("counter_oid", vendor_config["counter_oid"])
-        serial_oid = model_config.get("serial_oid", vendor_config["serial_oid"])
+    counter = await snmp_get(ip, counter_oid)
+    serial = await snmp_get(ip, serial_oid)
 
-        counter = await snmp_get(ip, counter_oid)
-        serial = await snmp_get(ip, serial_oid)
-    
-        return model, counter, serial
-    except FileNotFoundError as exc: raise RuntimeError("Az snmp_vendor_oids.json fájl nem található.") from exc
-    except OSError as exc: raise RuntimeError(f"Nem sikerült beolvasni az snmp_vendor_oids.json fájlt: {exc}") from exc
-    except json.JSONDecodeError as exc: raise RuntimeError(f"Hibás JSON: {exc.msg} sor: {exc.lineno}, oszlop: {exc.colno}") from exc
-    except ValueError as exc: raise RuntimeError(f"Hibás SNMP vendor konfiguráció: {exc}") from exc
-    except SNMPError: raise
-    except Exception as exc: raise RuntimeError(f"Váratlan hiba a nyomtató lekérdezése közben ({ip}): {exc}") from exc
+    return model, counter, serial
+
+vendor_oids = load_vendor_oids()
