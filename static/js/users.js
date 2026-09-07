@@ -21,8 +21,6 @@ async function initUsers() {
     await loadUsers();
 }
 
-initUsers();
-
 async function loadUsers() {
     try {
         const response = await fetch("/get_users");
@@ -52,7 +50,7 @@ const usersBody =
 document.getElementById("usersBody");
 
 const searchInput =
-document.getElementById("searchInput");
+document.getElementById("usersearchInput");
 
 const userCount =
 document.getElementById("userCount");
@@ -66,12 +64,8 @@ FELHASZNÁLÓK MEGJELENÍTÉSE
 
 function renderUsers() {
     
-    const search =
-    searchInput.value
-    .trim()
-    .toLowerCase();
-    
-    
+    const search = searchInput.value.trim().toLowerCase();
+     
     const filtered =
     users.filter(user =>
         user.name.toLowerCase().includes(search) ||
@@ -573,10 +567,9 @@ document
 KERESÉS
 ========================= */
 
-searchInput.addEventListener(
-"input",
-    renderUsers
-);
+searchInput.addEventListener("input", function () {
+    renderUsers();
+});
 
 /* =========================
 JELSZÓ MUTATÁSA
