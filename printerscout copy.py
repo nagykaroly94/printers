@@ -378,17 +378,6 @@ def update_printer_tablazat():
 
     if db_execute("UPDATE nyomtatok SET tablazat=%s WHERE azonosito=%s", (tablazat, azonosito)) == 1: notify_clients("Nyomtató táblázata módosítva.")
 
-@app.route("/update_printer_tablazat", methods=["POST"])
-def update_printer_tablazat():
-    data = request.json
-    tablazat = data.get("tablazat")
-    azonosito = data.get("azonosito")
-
-    if tablazat is None or azonosito is None:
-        notify_clients_error("/update_printer_tablazat - Hiányzó adat!")
-        return
-
-    if db_execute("UPDATE nyomtatok SET tablazat=%s WHERE azonosito=%s", (tablazat, azonosito)) == 1: notify_clients("Nyomtató táblázata módosítva.")
 
 @app.route("/save_monthly", methods=["POST"])
 def save_monthly():
@@ -627,6 +616,134 @@ def delete_csoport():
     id_ = data.get("id")
     if not id_: notify_clients_error("/api/delete_csoport - Hiányzó ID!")
     elif db_execute("DELETE FROM csoportok WHERE id=%s", id_) == 1:  notify_clients("Sikeres törlés!")
+
+@app.route("/add_user", methods=["POST"])
+def add_user():
+    data = request.get_json()
+
+    if any(data.get(key) is None for key in ("nev", "felhasznalonev", "email", "isadmin", "jelszo")):
+        notify_clients_error("Hiányzó adat!")
+        return
+
+    if data.get("jogosultsag") == "Válassz a listából":
+        notify_clients_error("Nincs jogosultsági szint kiválasztva!")
+        return
+    existing_user = db_execute(
+        "SELECT felhasznalonev FROM felhasznalok WHERE felhasznalonev = %s",
+        (data.get("felhasznalonev"),)
+    )
+
+    if existing_user:
+        notify_clients_error("Ez a felhasználónév már létezik.")
+        return "", 409
+
+    # Jelszó hash-elése bcrypt-tel
+    hashed_password = bcrypt.hashpw(
+        data.get("jelszo").encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
+    if db_execute(
+        "INSERT INTO felhasznalok"
+        "(nev, felhasznalonev, email, isadmin, jelszo)"
+        "VALUES (%s, %s, %s, %s, %s)",
+        (
+            data.get("nev"),
+            data.get("felhasznalonev"),
+            data.get("email"),
+            data.get("isadmin"),
+            hashed_password
+        )
+    ) == 1:
+        notify_clients("Felhasználó hozzáadva.")
+        return "", 200
+    notify_clients_error("A felhasználónévnek egyedinek kell lennie!")
+    return ""
+
+@app.route("/get_users")
+def get_users(): return jsonify(db_execute("SELECT * FROM felhasznalok") or [])
+
+@app.route("/delete_user/<felhasznalonev>", methods=["DELETE"])
+def delete_user(felhasznalonev):
+
+    if not felhasznalonev:
+        notify_clients_error("/delete_user - Hiányzó felhasználónév!")
+        return "", 400
+
+    if current_user.is_authenticated and current_user.username == felhasznalonev:
+        notify_clients_error("Saját felhasználó nem törölhető!")
+        return "", 403
+    
+    if db_execute(
+        "DELETE FROM felhasznalok WHERE felhasznalonev=%s",
+        (felhasznalonev,)
+    ) == 1:
+        notify_clients("Felhasználó törölve.")
+        return "", 200
+
+    return "", 500
+
+@app.route("/current_user")
+def get_current_user():
+    if not current_user.is_authenticated:
+        return jsonify({"authenticated": False})
+
+    return jsonify({
+        "authenticated": True,
+        "username": current_user.username
+    })
+
+@app.route("/change_password/<felhasznalonev>", methods=["PUT"])
+def change_password(felhasznalonev):
+
+    data = request.get_json()
+
+    if not data or not data.get("jelszo"):
+        notify_clients_error(
+            "/change_password - Hiányzó jelszó!"
+        )
+        return "", 400
+
+    new_password = data.get("jelszo")
+
+    if len(new_password) < 8:
+        notify_clients_error(
+            "A jelszónak legalább 8 karakter hosszúnak kell lennie."
+        )
+        return "", 400
+
+    hashed_password = bcrypt.hashpw(
+        new_password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
+
+    if db_execute(
+        "UPDATE felhasznalok SET jelszo=%s WHERE felhasznalonev=%s",
+        (hashed_password, felhasznalonev)
+    ) == 1:
+
+        notify_clients("Jelszó sikeresen módosítva.")
+        return "", 200
+
+    return "", 500
+
+@app.route("/update_user", methods=["POST"])
+def update_user():
+    data = request.json
+    if any(data.get(key) is None for key in ("regi_felhasznalonev", "nev", "felhasznalonev", "email", "isadmin")):
+        notify_clients_error("Hiányzó adat!")
+        return "", 400
+    if db_execute("UPDATE felhasznalok SET nev=%s, felhasznalonev=%s, email=%s, isadmin=%s WHERE felhasznalonev=%s", (
+        data["nev"],
+        data["felhasznalonev"],
+        data["email"],
+        data["isadmin"],
+        data["regi_felhasznalonev"]
+    )) == 1:
+
+        notify_clients("Felhasználó módosítva.")
+        return "", 200
+    return "", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

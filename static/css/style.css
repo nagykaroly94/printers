@@ -279,6 +279,46 @@ label {
     font-size: 20px;
 }
 
+#passwordModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+
+    align-items: center;
+    justify-content: center;
+}
+
+
+.password-field {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-field button {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 0;
+    padding: 0 8px;
+    margin: 0;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.password-field button:hover {
+    background: transparent;
+}
+
+.password-field input {
+    flex: 1;
+    min-width: 0;
+    margin-top: 0;
+}
+
 #printerTable th, #printerTable td {
     border: 1px solid #334155;
     padding: 8px;

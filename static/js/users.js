@@ -1,30 +1,52 @@
-/*
+let users = [];
+let loggedInUsername = "";
+let passwordUser = null;
 
-* Mintaadatok.
-* Backend használatakor ezeket API-hívásokra lehet cserélni.
-*/
-
-let users = [
+async function loadCurrentUser() {
+    const response = await fetch("/current_user");
     
-    
-    {
-        id: 1,
-        name: "Kovács Péter",
-        username: "kovacs.peter",
-        email: "peter@example.hu",
-        role: "admin"
-    },
-    
-    {
-        id: 2,
-        name: "Nagy Anna",
-        username: "nagy.anna",
-        email: "anna@example.hu",
-        role: "user"
+    if (!response.ok) {
+        return;
     }
     
+    const data = await response.json();
     
-];
+    if (data.authenticated) {
+        loggedInUsername = data.username;
+    }
+}
+
+async function initUsers() {
+    await loadCurrentUser();
+    await loadUsers();
+}
+
+initUsers();
+
+async function loadUsers() {
+    try {
+        const response = await fetch("/get_users");
+        
+        if (!response.ok) {
+            throw new Error("Nem sikerült lekérni a felhasználókat.");
+        }
+        
+        const data = await response.json();
+        
+        users = data.map(user => ({
+            id: user.id,
+            name: user.nev,
+            username: user.felhasznalonev,
+            email: user.email,
+            role: Number(user.isadmin) === 1 ? "admin" : "user"
+        }));
+        
+        renderUsers();
+        
+    } catch (error) {
+        console.error("Felhasználók betöltési hiba:");
+    }
+}
 
 const usersBody =
 document.getElementById("usersBody");
@@ -83,6 +105,7 @@ function renderUsers() {
                 data-field="name"
                 value="${escapeAttribute(user.name)}"
                 disabled
+                required
             >
         </td>
         
@@ -93,6 +116,7 @@ function renderUsers() {
                 data-field="username"
                 value="${escapeAttribute(user.username)}"
                 disabled
+                required
             >
         </td>
         
@@ -104,6 +128,7 @@ function renderUsers() {
                 type="email"
                 value="${escapeAttribute(user.email)}"
                 disabled
+                required
             >
         </td>
         
@@ -152,7 +177,8 @@ function renderUsers() {
                 <button
                     class="primary-btn"
                     type="button"
-                    onclick="deleteUser(${user.id})"
+                    onclick="deleteUser('${user.username}')"
+                    ${user.username === loggedInUsername ? "disabled" : ""}
                 >
                     ❌
                 </button>
@@ -194,54 +220,75 @@ function changeUserRole(id, role) {
 ========================= */
 
 function setNewPassword(id) {
+    const user = users.find(item => item.id === id);
     
+    if (!user) {
+        console.error("Felhasználó nem található:", id);
+        return;
+    }
     
-    const user =
-    users.find(item => item.id === id);
+    passwordUser = user;
     
+    document.getElementById("passwordUserName").textContent = user.name;
+    document.getElementById("changePasswordInput").value = "";
     
-    if (!user) return;
+    document.getElementById("passwordModal").style.display = "flex";
     
+    document.getElementById("changePasswordInput").focus();
+}
+
+function closePasswordModal() {
+    document.getElementById("passwordModal").style.display = "none";
+    
+    passwordUser = null;
+}
+
+async function saveNewPassword() {
+    
+    if (!passwordUser) {
+        return;
+    }
     
     const password =
-    prompt(
-        `Új jelszó megadása:\n\n${user.name}`
-    );
+    document.getElementById("changePasswordInput").value;
     
-    
-    if (password === null) {
-        return;
-    }
-    
-    
-    if (password.length < 8) {
+    try {
         
-        alert(
-            "A jelszónak legalább 8 karakter hosszúnak kell lennie."
+        const response =
+        await fetch(
+            `/change_password/${encodeURIComponent(passwordUser.username)}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    jelszo: password
+                })
+            }
         );
         
-        return;
+        if (!response.ok) {            
+            return;
+        }
+        
+        closePasswordModal();
+        
+    } catch (error) {
+        
+        console.error(
+            "Jelszó módosítási hiba:",
+            error
+        );
+        
     }
-    
-    
-    /*
-    * FONTOS:
-    * A jelszót valódi rendszerben nem itt,
-    * hanem a backendben kell kezelni.
-    */
-    
-    alert(
-        "A jelszó sikeresen módosítva."
-    );
-    
-    
 }
 
 /* =========================
 FELHASZNÁLÓ MÓDOSÍTÁSA
 ========================= */
 
-function editUser(id, btn) {
+async function editUser(id, btn) {
     
     const row = btn.closest("tr");
     
@@ -252,6 +299,10 @@ function editUser(id, btn) {
     const editing = btn.dataset.editing === "true";
     
     if (!editing) {
+        
+        btn.dataset.oldUsername = row
+        .querySelector('[data-field="username"]')
+        .value.trim();
         
         // Szerkesztés bekapcsolása
         inputs.forEach(input => {
@@ -264,11 +315,10 @@ function editUser(id, btn) {
     } else {
         
         // Mentés
-        const user = users.find(
-            item => item.id === id
-        );
+        const user = users.find(item => item.id === id);
         
         if (!user) return;
+        const oldUsername = btn.dataset.oldUsername;
         
         const name = row
         .querySelector('[data-field="name"]')
@@ -285,17 +335,32 @@ function editUser(id, btn) {
         const role = row
         .querySelector('[data-field="role"]')
         .value;
+        const isadmin = role === "admin" ? 1 : 0;
         
         
         if (!name || !username || !email) {
-            
-            alert(
-                "A név, felhasználónév és e-mail cím kitöltése kötelező."
-            );
-            
+            showToast("Minden mező kitöltése kötelező!");
             return;
         }
         
+        
+        const response = await fetch("/update_user", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                regi_felhasznalonev: oldUsername,
+                nev: name,
+                felhasznalonev: username,
+                email: email,
+                isadmin: isadmin
+            })
+        });
+        
+        if (!response.ok) {
+            return;
+        }
         
         user.name = name;
         user.username = username;
@@ -313,98 +378,6 @@ function editUser(id, btn) {
         btn.textContent = "🔧";
         btn.dataset.editing = "false";
     }
-}
-
-/* =========================
-MÓDOSÍTÁS MENTÉSE
-========================= */
-
-function saveUser(id, button) {
-    
-    const row =
-    button.closest("tr");
-    
-    
-    const user =
-    users.find(item => item.id === id);
-    
-    
-    if (!user) return;
-    
-    
-    const name =
-    row.querySelector(
-        '[data-field="name"]'
-    ).value.trim();
-    
-    
-    const username =
-    row.querySelector(
-        '[data-field="username"]'
-    ).value.trim();
-    
-    
-    const email =
-    row.querySelector(
-        '[data-field="email"]'
-    ).value.trim();
-    
-    
-    const role =
-    row.querySelector(
-        '[data-field="role"]'
-    ).value;
-    
-    
-    if (!name || !username || !email) {
-        
-        alert(
-            "A név, felhasználónév és e-mail cím kitöltése kötelező."
-        );
-        
-        return;
-    }
-    
-    
-    user.name =
-    name;
-    
-    user.username =
-    username;
-    
-    user.email =
-    email;
-    
-    user.role =
-    role;
-    
-    
-    /*
-    * Mezők újra letiltása.
-    */
-    
-    row.querySelectorAll(
-        '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
-    ).forEach(input => {
-        
-        input.disabled = true;
-        
-        input.dataset.originalValue =
-        input.value;
-        
-    });
-    
-    
-    /*
-    * Gombok visszaállítása.
-    */
-    
-    row.querySelector(".edit-btn").hidden = false;
-    
-    row.querySelector(".save-btn").hidden = true;
-    
-    row.querySelector(".cancel-btn").hidden = true;
-    
 }
 
 /* =========================
@@ -444,34 +417,34 @@ function cancelEdit(id, button) {
 FELHASZNÁLÓ TÖRLÉSE
 ========================= */
 
-function deleteUser(id) {
+async function deleteUser(username) {
     
+    if (!confirm("Biztosan törölni szeretnéd ezt a felhasználót?")) {
+        return;
+    }
     
-    const user =
-    users.find(item => item.id === id);
-    
-    
-    if (!user) return;
-    
-    
-    const confirmed =
-    confirm(
-        `Biztosan törölni szeretnéd a felhasználót?\n\n${user.name}`
-    );
-    
-    
-    if (!confirmed) return;
-    
-    
-    users =
-    users.filter(
-        item => item.id !== id
-    );
-    
-    
-    renderUsers();
-    
-    
+    try {
+        
+        const response = await fetch(
+            `/delete_user/${encodeURIComponent(username)}`,
+            {
+                method: "DELETE"
+            }
+        );
+        
+        if (!response.ok) {
+            alert("Hiba történt a felhasználó törlésekor.");
+            return;
+        }
+        
+        await loadUsers();
+        
+    } catch (error) {
+        
+        console.error("Felhasználó törlési hiba:", error);
+        
+        alert("Nem sikerült kapcsolódni a szerverhez.");
+    }
 }
 
 /* =========================
@@ -480,125 +453,118 @@ function deleteUser(id) {
 
 document
 .getElementById("addUserForm")
-.addEventListener("submit", event => {
-    
+.addEventListener("submit", async event => {
     
     event.preventDefault();
-    
     
     const name =
     document.getElementById("newName")
     .value.trim();
     
-    
     const username =
     document.getElementById("newUsername")
     .value.trim();
-    
     
     const email =
     document.getElementById("newEmail")
     .value.trim();
     
-    
     const password =
     document.getElementById("newPassword")
     .value;
     
+    const passwordConfirmInput =
+    document.getElementById("newPasswordConfirm");
     
     const passwordConfirm =
-    document.getElementById("newPasswordConfirm")
-    .value;
+    passwordConfirmInput.value;
     
-    
+    passwordConfirmInput.addEventListener("input", () => {
+        passwordConfirmInput.setCustomValidity("");
+    });
     const role =
     document.getElementById("newRole")
     .value;
     
-    
-    const message =
-    document.getElementById("formMessage");
-    
-    
-    if (password.length < 8) {
-        
-        message.hidden = false;
-        
-        message.textContent =
-        "A jelszónak legalább 8 karakter hosszúnak kell lennie.";
-        
-        return;
-    }
-    
+    const isadmin = Number(role);
     
     if (password !== passwordConfirm) {
         
-        message.hidden = false;
+        passwordConfirmInput.setCustomValidity(
+            "A két jelszónak meg kell egyeznie."
+        );
         
-        message.textContent =
-        "A két jelszó nem egyezik.";
-        
-        return;
-    }
-    
-    
-    if (!role) {
-        
-        message.hidden = false;
-        
-        message.textContent =
-        "A jogosultság kiválasztása kötelező.";
+        passwordConfirmInput.reportValidity();
         
         return;
+        
+    } else {
+        
+        passwordConfirmInput.setCustomValidity("");
     }
+    /* =========================
+    ADATKÜLDÉS FLASKNAK
+    ========================= */
     
-    
-    if (
-        users.some(
-            user =>
-                user.username.toLowerCase() ===
-            username.toLowerCase()
-        )
-    ) {
+    try {
         
-        message.hidden = false;
+        const response =
+        await fetch("/add_user", {
+            
+            method: "POST",
+            
+            headers: {
+                "Content-Type": "application/json"
+            },
+            
+            body: JSON.stringify({
+                
+                nev: name,
+                
+                felhasznalonev: username,
+                
+                email: email,
+                
+                isadmin: isadmin,
+                
+                jelszo: password
+                
+            })
+            
+        });
         
-        message.textContent =
-        "Ez a felhasználónév már létezik.";
         
-        return;
+        if (!response.ok) {
+            return;
+        }
+        
+        /* =========================
+        SIKERES MENTÉS
+        ========================= */
+        
+        event.target.reset();
+        
+        
+        /* Felhasználók újratöltése */
+        
+        if (typeof loadUsers === "function") {
+            
+            await loadUsers();
+            
+        } else {
+            
+            renderUsers();
+            
+        }
+        
+        
+    } catch (error) {
+        
+        console.error(
+            "Felhasználó hozzáadási hiba:",
+            error
+        );        
     }
-    
-    
-    users.push({
-        
-        id: Date.now(),
-        
-        name,
-        
-        username,
-        
-        email,
-        
-        role
-        
-        /*
-        * A jelszó backendben legyen kezelve.
-        */
-        
-    });
-    
-    
-    event.target.reset();
-    
-    
-    message.hidden = false;
-    
-    message.textContent =
-    "A felhasználó sikeresen hozzáadva.";
-    
-    
-    renderUsers();
     
 });
 
@@ -616,26 +582,26 @@ searchInput.addEventListener(
 JELSZÓ MUTATÁSA
 ========================= */
 document.querySelectorAll('input[type="password"]').forEach(input => {
-
+    
     const div = input.parentElement;
     div.classList.add('password-field');
-
+    
     const button = document.createElement('button');
-
+    
     button.type = 'button';
     button.textContent = '👀';
-
+    
     button.addEventListener('click', () => {
-
+        
         const visible = input.type === 'text';
-
+        
         input.type = visible ? 'password' : 'text';
         button.textContent = visible ? '👀' : '🫣';
-
+        
     });
-
+    
     div.appendChild(button);
-
+    
 });
 /* =========================
 HTML ESCAPE
@@ -665,5 +631,4 @@ function escapeAttribute(value) {
 /* =========================
 INDÍTÁS
 ========================= */
-
-renderUsers();
+initUsers();

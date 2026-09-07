@@ -194,3 +194,41 @@
         </div>
     </div>
 </div>
+
+<div id="passwordModal" class="modal">
+    
+    <div class="modal-content">
+        
+        <h2>Jelszó módosítása</h2>
+        
+        <p id="passwordUserName"></p>
+        <div class="password-field">
+            <input
+            id="changePasswordInput"
+            type="password"
+            placeholder="Új jelszó"
+            minlength="8"
+            required
+            >
+        </div>
+        
+        <div class="modal-actions">
+            <button
+            type="button"
+            class="primary-btn"
+            onclick="saveNewPassword()"
+            >
+            Mentés
+        </button>
+        <button
+        type="button"
+        class="primary-btn"
+        onclick="closePasswordModal()"
+        >
+        Mégse
+    </button>
+</div>
+
+</div>
+
+</div>

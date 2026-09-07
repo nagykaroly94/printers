@@ -15,7 +15,7 @@
     
 </head>
 <body>
-    
+    <div id="toast-container"></div>
     <h1 class="header">🖨️ PrinterSCOUT</h1>
     
     {% include '_menu.html' %}
@@ -90,8 +90,8 @@
                         
                         <select id="newRole" class="select-input" required>
                             <option value="" selected disabled hidden>Válassz jogosultságot</option>
-                            <option value="user">Felhasználó</option>
-                            <option value="admin">Rendszergazda</option>
+                            <option value="0">Felhasználó</option>
+                            <option value="1">Rendszergazda</option>
                         </select>
                         
                     </div>
@@ -112,9 +112,6 @@
                             minlength="8"
                             required
                             >
-                            
-                            
-                            
                         </div>
                         
                     </div>
@@ -153,15 +150,6 @@
             </button>
             
         </div>
-        
-        
-        <div
-        class="message"
-        id="formMessage"
-        hidden
-        ></div>
-        
-        
     </form>
     
 </section>
