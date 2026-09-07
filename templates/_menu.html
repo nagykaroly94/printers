@@ -11,7 +11,7 @@
     </button>
 
     <button onclick="(toggleModal(),openModal())">
-        Nyomtató Hozzáadása
+        Nyomtató hozzáadása
     </button>
 
     <button onclick="(toggleModal(),openListModaltabla())">
@@ -19,7 +19,7 @@
     </button>
 
     <button onclick="(toggleModal(),openCsoportModal())">
-        Csoportok hozzáadása
+        Csoport hozzáadása
     </button>
 
     <button onclick="(toggleModal(),openManageModal('cim'))">
@@ -39,16 +39,12 @@
     </button>
 
     <button onclick="(toggleModal(),window.open('/get_full_diff'))">
-        Oldalszám exportálása
-    </button>
-
-    <button onclick="(toggleModal(),window.open('/get_full_diff'))">
-        Oldalszám exportálása
+        Oldalszám exportálás
     </button>
 
     {% if current_user.isadmin %}
     <button onclick="document.location='users'">
-        Felhasználók kezelése
+        Felhasználó kezelés
     </button>
     {% endif %}
 

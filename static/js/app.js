@@ -99,8 +99,13 @@ function loadInitial() {
                 type: r.tipus,
                 serial: r.gyari_szam,
                 pages: r.oldalszam,
+                
                 cim: r.cim,
+                cim_id: r.cim_id,
+                
                 uzemelteto: r.uzemelteto,
+                uzemelteto_id: r.uzemelteto_id,
+                
                 tablazat: r.tablazat,
                 rogzitve: r.rogzitve,
                 status: r.status
@@ -142,10 +147,40 @@ function update() {
     });
 }
 
+function populateSelect(
+    selectElem,
+    options,
+    valueField,
+    textField,
+    selectedValue = null
+) {
+    if (!selectElem) return;
+    
+    selectElem.innerHTML =
+    `<option value="">Nincs megadva</option>`;
+    
+    options.forEach(item => {
+        const option = document.createElement("option");
+        
+        option.value = item[valueField];
+        option.textContent =
+        item[textField] || item[valueField];
+        
+        if (
+            selectedValue !== null &&
+            String(option.value) === String(selectedValue)
+        ) {
+            option.selected = true;
+        }
+        
+        selectElem.appendChild(option);
+    });
+}
+
 /* -------------------------
 RENDER TABLES
 ------------------------- */
-function renderTables(results) {
+async function renderTables(results) {
     let tables_div = document.getElementById("tables");
     tables_div.innerHTML = "";
     
@@ -159,17 +194,21 @@ function renderTables(results) {
         grouped[key].push(r);
     }
     
-    Object.keys(grouped)
-    .sort((a, b) => {
-        if (a === "Nincs táblázat") return -1;
-        if (b === "Nincs táblázat") return 1;
-        return a.localeCompare(b, 'hu');
-    })
-    .forEach(key => {
-        
+    const uzemeltetoOptions =
+        await getOptions("/api/list_uzemelteto");
+
+    const sortedKeys = Object.keys(grouped)
+        .sort((a, b) => {
+            if (a === "Nincs táblázat") return -1;
+            if (b === "Nincs táblázat") return 1;
+            return a.localeCompare(b, "hu");
+        });
+
+    for (const key of sortedKeys) {
+
         grouped[key].sort((a, b) =>
-            (a.id || "").localeCompare(b.id || "", 'hu')
-    );
+            (a.id || "").localeCompare(b.id || "", "hu")
+        );
     
     let h2 = document.createElement("h2");
     h2.textContent = key;
@@ -191,8 +230,15 @@ function renderTables(results) {
                 </tr>
             `;
     
-    grouped[key].forEach(r => {
+    for (const r of grouped[key]) {
         
+
+        console.log("NYOMTATÓ:", r.id);
+        console.log("UZEMELTETO:", r.uzemelteto);
+        console.log("UZEMELTETO_ID:", r.uzemelteto_id);
+        console.log("CIM:", r.cim);
+        console.log("CIM_ID:", r.cim_id);
+        console.log("OPCIOK:", uzemeltetoOptions);
         let color = "#3b82f6";
         let extraClass = "";
         
@@ -225,55 +271,90 @@ function renderTables(results) {
             status: r.status,
             ip: r.ip
         };
+        const tr = document.createElement("tr");
         
-        table.innerHTML += `
-                <tr class="${rowClass}" data-id="${r.id}">
-                    <td data-field="id">${r.id}</td>
-                    <td data-field="name">${r.name}</td>
-                    <td data-field="ip">
-                        <a href="http://${r.ip}" target="_blank"
-                        class="${extraClass}"
-                        style="color:${color};text-decoration:none;">
-                        ${r.ip}
-                        </a>
-                    </td>
-                    <td data-field="type">${r.type}</td>
-                    <td data-field="serial">${r.serial}</td>
-                    <td data-field="pages">${r.pages}</td>
-                    <td data-field="uzemelteto">${r.uzemelteto}</td>
-                    <td data-field="cim">${r.cim}</td>
+        tr.className = rowClass;
+        tr.dataset.id = r.id;
+        
+        tr.innerHTML = `
+                    <td data-field="id"onclick="window.open('http://${escapeHtml(r.ip)}', '_blank')"style="cursor:pointer;">${r.id}</td>
+                    <td data-field="name"><input class="mfinput" type="text" value="${escapeHtml(r.name || "")}" disabled></td>
+                    <td data-field="ip"><input class="mfinput" type="text" value="${escapeHtml(r.ip || "")}" disabled></td>
+                    <td data-field="type"><input class="mfinput" type="text" value="${escapeHtml(r.type || "")}" disabled></td>
+                    <td data-field="serial"><input class="mfinput" type="text" value="${escapeHtml(r.serial || "")}" disabled></td>
+                    <td data-field="pages"><input class="mfinput" type="text" value="${escapeHtml(r.pages || "")}" disabled></td>
+                    <td data-field="uzemelteto"><select class="mfselect uzemelteto" disabled><option value="">Nincs megadva</option></select></td>
+                    <td data-field="cim"><select class="mfselect cim" disabled><option value="">Nincs megadva</option></select></td>
                     <td data-field="rogzitve">${r.rogzitve ? new Date(r.rogzitve).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' }) : "N/A"}</td>
-                    <!--Itt hozza létre dinamikusan a gombot-->
                     <td>
-                        <button style="mfctnr button" title="Oldalszám módosítása" onclick="updatePageCount(${r.id})">📃</button>
-                        <button style="mfctnr button" title="Oldalszám módosítása" onclick="editPrinterInline(${r.id}, this)">🔧</button>
+                        <button style="mfctnr button" title="Nyomtató adatainak módosítása" onclick="editPrinterInline(${r.id}, this)">🔧</button>
                         <button style="mfctnr button" title="Nyomtató törlése" onclick="deleteRow(${r.id})">❌</button>
                     </td>
-                </tr>
                 `;
-    });
+        table.appendChild(tr);
+            const uzemSelect = tr.querySelector(".uzemelteto");
+            const cimSelect = tr.querySelector(".cim");
+
+            // Üzemeltető ID meghatározása
+            let selectedUzemId = null;
+
+            if (r.uzemelteto_id !== undefined && r.uzemelteto_id !== null) {
+                selectedUzemId = r.uzemelteto_id;
+            } else if (r.uzemelteto) {
+                const match = uzemeltetoOptions.find(
+                    u => String(u.uzemelteto).trim() === String(r.uzemelteto).trim()
+                );
+
+                selectedUzemId = match ? match.id : null;
+            }
+
+            // Üzemeltető feltöltése
+            populateSelect(
+                uzemSelect,
+                uzemeltetoOptions,
+                "id",
+                "uzemelteto",
+                selectedUzemId
+            );
+
+            // Cím feltöltése
+            if (selectedUzemId !== null) {
+
+                const cimek = await getOptions(
+                    `/api/get_relations_by_uzem/${selectedUzemId}`
+                );
+
+                // Cím ID meghatározása
+                let selectedCimId = null;
+
+                if (r.cim_id !== undefined && r.cim_id !== null) {
+                    selectedCimId = r.cim_id;
+                } else if (r.cim) {
+                    const match = cimek.find(
+                        c => String(c.cim).trim() === String(r.cim).trim()
+                    );
+
+                    selectedCimId = match ? match.cim_id : null;
+                }
+
+                populateSelect(
+                    cimSelect,
+                    cimek,
+                    "cim_id",
+                    "cim",
+                    selectedCimId
+                );
+            }
+    }
     
-    let btn = document.createElement("button");
-    btn.textContent = "Táblázat letöltés";
-    btn.style.marginBottom = "10px";
     
-    btn.onclick = function () {
-        const safeKey = key
-        .split('/')
-        .map(encodeURIComponent)
-        .join('/');
-        
-        window.location.href = `/printer_pages/${safeKey}.xlsx`;
-    };
-    
-    tables_div.appendChild(h2);
-    tables_div.appendChild(btn);
-    tables_div.appendChild(table);
+        tables_div.appendChild(h2);
+        tables_div.appendChild(table);
     
     let hr = document.createElement("hr");
     hr.className = "separator";
     tables_div.appendChild(hr);
-});
+}
 }
 /* -------------------------
 UPDATE PAGE COUNT
@@ -377,13 +458,14 @@ async function editPrinterInline(printer_id, btn) {
         
         uzemeltetok.forEach(u => {
             const option = document.createElement("option");
-            option.value = u.uzemelteto;
+
+            option.value = u.id;
             option.textContent = u.uzemelteto;
-            
-            if (u.uzemelteto === printer.uzemelteto) {
+
+            if (String(u.id) === String(printer.uzemelteto_id)) {
                 option.selected = true;
             }
-            
+
             uzemSelect.appendChild(option);
         });
         
@@ -415,42 +497,39 @@ async function editPrinterInline(printer_id, btn) {
                 `/api/get_relations_by_uzem/${selectedUzemId}`
             );
             
-            cimek.forEach(c => {
-                const option = document.createElement("option");
-                option.value = c.cim;
-                option.textContent = c.cim;
-                
-                if (c.cim === printer.cim) {
-                    option.selected = true;
-                }
-                
-                cimSelect.appendChild(option);
-            });
+        cimek.forEach(c => {
+            const option = document.createElement("option");
+
+            option.value = c.cim_id;
+            option.textContent = c.cim;
+
+            if (String(c.cim_id) === String(printer.cim_id)) {
+                option.selected = true;
+            }
+
+            cimSelect.appendChild(option);
+        });
         }
         
         // Üzemeltető változásakor frissítsük a címeket
         uzemSelect.addEventListener("change", async () => {
-            const selectedUzem = parseInt(uzemSelect.value);
-            
+            const selectedUzemId = uzemSelect.value;
+
             cimSelect.innerHTML =
-            `<option value="">Nincs megadva</option>`;
-            
-            if (!selectedUzem) return;
-            
-            const selectedUzemObject = uzemeltetok.find(
-                u => u.uzemelteto === uzemSelect.value
-            );
-            
-            if (!selectedUzemObject) return;
-            
+                `<option value="">Nincs megadva</option>`;
+
+            if (!selectedUzemId) return;
+
             const cimek = await getOptions(
-                `/api/get_relations_by_uzem/${selectedUzemObject.id}`
+                `/api/get_relations_by_uzem/${selectedUzemId}`
             );
-            
+
             cimek.forEach(c => {
                 const option = document.createElement("option");
-                option.value = c.cim;
+
+                option.value = c.cim_id;
                 option.textContent = c.cim;
+
                 cimSelect.appendChild(option);
             });
         });
