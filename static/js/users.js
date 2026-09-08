@@ -65,7 +65,7 @@ FELHASZNÁLÓK MEGJELENÍTÉSE
 function renderUsers() {
     
     const search = searchInput.value.trim().toLowerCase();
-     
+    
     const filtered =
     users.filter(user =>
         user.name.toLowerCase().includes(search) ||
@@ -169,12 +169,12 @@ function renderUsers() {
                 </button>
         
                 <button
-                    class="primary-btn"
+                    class="primary-btn delete-btn"
                     type="button"
                     onclick="deleteUser('${user.username}')"
                     ${user.username === loggedInUsername ? "disabled" : ""}
                 >
-                    ❌
+                    🗑️
                 </button>
         
             </div>
@@ -283,6 +283,11 @@ FELHASZNÁLÓ MÓDOSÍTÁSA
 ========================= */
 
 async function editUser(id, btn) {
+    const editingRow = document.querySelector('button[data-editing="true"]');
+    
+    if (editingRow && editingRow !== btn) {
+        return;
+    }
     
     const row = btn.closest("tr");
     
@@ -298,9 +303,33 @@ async function editUser(id, btn) {
         .querySelector('[data-field="username"]')
         .value.trim();
         
+        // Eredeti értékek tárolása
+        inputs.forEach(input => {
+            input.dataset.originalValue = input.value;
+        });
+        
         // Szerkesztés bekapcsolása
         inputs.forEach(input => {
             input.disabled = false;
+        });
+        
+        const deleteBtn = row.querySelector(".delete-btn");
+        
+        deleteBtn.textContent = "↩️";
+        deleteBtn.onclick = () => cancelEdit(id, btn);
+        deleteBtn.disabled = false;
+        document.querySelectorAll('button[onclick^="editUser"]').forEach(button => {
+            if (button !== btn) {
+                button.disabled = true;
+            }
+        });
+        document.querySelectorAll(".delete-btn").forEach(button => {
+            if (button !== deleteBtn) {
+                button.disabled = true;
+            }
+        });
+        document.querySelectorAll('button[onclick^="setNewPassword"]').forEach(button => {
+            button.disabled = true;
         });
         
         btn.textContent = "💾";
@@ -366,7 +395,24 @@ async function editUser(id, btn) {
         inputs.forEach(input => {
             input.disabled = true;
         });
+        document.querySelectorAll('button[onclick^="editUser"]').forEach(button => {
+            button.disabled = false;
+        });
+        document.querySelectorAll('button[onclick^="setNewPassword"]').forEach(button => {
+            button.disabled = false;
+        });
+        document.querySelectorAll(".delete-btn").forEach(button => {
+            const username = button.closest("tr")
+            .querySelector('[data-field="username"]')
+            .value;
+            
+            button.disabled = username === loggedInUsername;
+        });
         
+        const deleteBtn = row.querySelector(".delete-btn");
+        
+        deleteBtn.textContent = "🗑️";
+        deleteBtn.onclick = () => deleteUser(user.username);
         
         // Vissza a szerkesztés ikonra
         btn.textContent = "🔧";
@@ -378,33 +424,44 @@ async function editUser(id, btn) {
 Módosítás visszavonása
 ========================= */
 
-function cancelEdit(id, button) {
+function cancelEdit(id, btn) {
     
-    const row =
-    button.closest("tr");
-    
+    const row = btn.closest("tr");
     
     if (!row) return;
     
-    
     row.querySelectorAll(
-        '[data-field="name"], [data-field="username"], [data-field="email"], [data-field="role"]'
+        'input[data-field], select[data-field]'
     ).forEach(input => {
-        
-        input.value =
-        input.dataset.originalValue;
-        
+        input.value = input.dataset.originalValue;
         input.disabled = true;
-        
     });
     
+    btn.textContent = "🔧";
+    btn.dataset.editing = "false";
     
-    row.querySelector(".edit-btn").hidden = false;
+    const deleteBtn = row.querySelector(".delete-btn");
     
-    row.querySelector(".save-btn").hidden = true;
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.description = "Felhasználó törlése";
+    deleteBtn.onclick = () => deleteUser(
+        row.querySelector('[data-field="username"]').value
+    );
     
-    row.querySelector(".cancel-btn").hidden = true;
+    document.querySelectorAll('button[onclick^="editUser"]').forEach(button => {
+        button.disabled = false;
+    });
     
+    document.querySelectorAll('button[onclick^="setNewPassword"]').forEach(button => {
+        button.disabled = false;
+    });
+    document.querySelectorAll(".delete-btn").forEach(button => {
+        const username = button.closest("tr")
+        .querySelector('[data-field="username"]')
+        .value;
+        
+        button.disabled = username === loggedInUsername;
+    });
 }
 
 /* =========================
