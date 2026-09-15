@@ -1,19 +1,28 @@
 import mysql.connector
 
-def get_db_connection(config):
+mysql_config = {}
+
+def db_configure(config):
+    global mysql_config
+    missing = {"host", "user", "password", "database"} - config.keys()
+    if missing: raise RuntimeError(f"Invalid MySQL configuration! Missing config fields: {', '.join(missing)}")
+    mysql_config = config
+
+def get_db_connection():
+    if not mysql_config: raise RuntimeError("MySQL configuration has not been initialized!")
     return mysql.connector.connect(
-        host=config["mysql"]["host"],
-        user=config["mysql"]["user"],
-        password=config["mysql"]["password"],
-        database=config["mysql"]["database"]
+        host = mysql_config["host"],
+        user = mysql_config["user"],
+        password = mysql_config["password"],
+        database = mysql_config["database"]
     )
 
-def execute_statement(config, statement, params=()):
+def db_execute_statement(statement, params=()):
     conn = None
     cursor = None
 
     try:
-        conn = get_db_connection(config)
+        conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         if not isinstance(params, (list, tuple, dict)): params = (params,)
