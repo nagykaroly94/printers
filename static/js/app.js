@@ -1,4 +1,3 @@
-let timer = null;
 let isRunning = false;
 let rowState = {};
 
@@ -6,12 +5,11 @@ let rowState = {};
 INIT
 ------------------------- */
 window.onload = function () {
-    if (window.location.pathname == "/index") {
+    if (window.location.pathname == "/") {
         loadInitial();
         document.getElementById("bar").style.width = "0%";
     }
 };
-
 
 /* -------------------------
 SSE (Server-Sent Events)
@@ -19,19 +17,106 @@ SSE (Server-Sent Events)
 const events = new EventSource("/events");
 
 events.onmessage = (event) => {
-    showToast(event.data);
+    let data;
+
+    try {
+        data = JSON.parse(event.data);
+    } catch {
+        showToast(event.data);
+        return;
+    }
+
+    switch (data.type) {
+
+        case "snmp_status":
+            updatePrinterStatus(data);
+            break;
+
+        case "progress":
+            updateProgress(data);
+            break;
+
+        case "finished":
+            isRunning = false;
+
+            const bar = document.getElementById("bar");
+            if (bar) {
+                bar.style.width = "100%";
+            }
+
+            break;
+
+        default:
+            console.warn(
+                "Ismeretlen SSE üzenettípus:",
+                data
+            );
+    }
 };
+
+function updateProgress(data) {
+    const processed = data.processed || 0;
+    const total = data.total || 1;
+
+    const percent = Math.min(
+        100,
+        Math.round((processed / total) * 100)
+    );
+
+    const bar = document.getElementById("bar");
+
+    if (bar) {
+        bar.style.width = percent + "%";
+    }
+}
+
+function updatePrinterStatus(data) {
+    console.log(
+        "SNMP update:",
+        data.id,
+        data.status,
+        data.count
+    );
+
+    if (data.status === "success") {
+
+        updateRow({
+            id: data.id,
+            status: "ok",
+            pages: data.count,
+            type: data.type_name,
+            serial: data.serial
+        });
+
+        return;
+    }
+
+    if (data.status === "timeout") {
+
+        updateRow({
+            id: data.id,
+            status: "error"
+        });
+
+        return;
+    }
+}
+
+
 
 function showToast(message) {
     const container = document.getElementById("toast-container");
     
     const toast = document.createElement("div");
     toast.className = "toast";
+
+    if (typeof message === "string" && message.startsWith("HIBA! ")) {
+        toast.classList.add("error");
+    }
+
     toast.textContent = message;
-    
     container.appendChild(toast);
     
-    // Remove it after the animation finishes
     setTimeout(() => {
         toast.remove();
     }, 3100);
@@ -42,25 +127,18 @@ START
 ------------------------- */
 
 function start() {
-    if (window.location.pathname !== "/index") {
-        window.location.href = "/index?autostart=1";
+    if (window.location.pathname !== "/") {
+        window.location.href = "/?autostart=1";
         return;
     }
-    
+
     fetch("/start");
-    
-    if (timer) {
-        clearInterval(timer);
-        timer = null;
-    }
-    
+
     isRunning = true;
-    
+
     document.getElementById("bar").style.width = "0%";
-    
+
     loadInitial();
-    
-    timer = setInterval(update, 1000);
 }
 
 window.addEventListener("load", function () {
@@ -107,43 +185,12 @@ function loadInitial() {
                 uzemelteto_id: r.uzemelteto_id,
                 
                 tablazat: r.tablazat,
-                rogzitve: r.rogzitve,
+                rogzitve: r.updated_at,
                 status: r.status
             };
         });
         
         renderTables(fakeResults);
-    });
-}
-
-/* -------------------------
-STATUS POLLING
-------------------------- */
-function update() {
-    fetch("/status")
-    .then(r => r.json())
-    .then(data => {
-        
-        let count = data.processed || 0;
-        let total = data.total ?? 1;
-        
-        let percent = total > 0
-        ? Math.min(100, Math.round((count / total) * 100))
-        : 0;
-        
-        document.getElementById("bar").style.width = percent + "%";
-        
-        if (data.updates) {
-            data.updates.forEach(u => updateRow(u));
-        }
-        
-        if (!data.running || count >= total) {
-            clearInterval(timer);
-            timer = null;
-            isRunning = false;
-            loadInitial();
-            return;
-        }
     });
 }
 
@@ -232,13 +279,13 @@ async function renderTables(results) {
     
     for (const r of grouped[key]) {
         
-
+/*
         console.log("NYOMTATÓ:", r.id);
         console.log("UZEMELTETO:", r.uzemelteto);
         console.log("UZEMELTETO_ID:", r.uzemelteto_id);
         console.log("CIM:", r.cim);
         console.log("CIM_ID:", r.cim_id);
-        console.log("OPCIOK:", uzemeltetoOptions);
+        console.log("OPCIOK:", uzemeltetoOptions);*/
         let color = "#3b82f6";
         let extraClass = "";
         
@@ -631,29 +678,90 @@ LIVE ROW UPDATE
 ------------------------- */
 function updateRow(data) {
     const row = document.querySelector(`tr[data-id="${data.id}"]`);
-    if (!row) return;
-    
-    const link = row.querySelector("a");
-    
+
+    if (!row) {
+        console.warn("Nem található sor:", data.id);
+        return;
+    }
+
     let color = "#3b82f6";
     let extraClass = "";
-    
+
     if (data.status === "ok") {
         color = "#22c55e";
-    } else if (data.status === "error") {
+    }
+    else if (data.status === "error") {
         color = "#ef4444";
         extraClass = "blink error-blink";
     }
-    
-    link.className = extraClass;
-    link.style.color = color;
-    
-    row.querySelector('[data-field="type"]').textContent = data.type || "N/A";
-    row.querySelector('[data-field="serial"]').textContent = data.serial || "N/A";
-    row.querySelector('[data-field="pages"]').textContent = data.pages || "N/A";
-    
-    row.querySelector('[data-field="rogzitve"]').textContent = formatDate(data.rogzitve) || "N/A";
+
+    // ID cella
+    const idCell = row.querySelector('[data-field="id"]');
+
+    if (idCell) {
+        idCell.style.color = color;
+        idCell.classList.remove("blink", "error-blink");
+
+        if (extraClass) {
+            idCell.classList.add(...extraClass.split(" "));
+        }
+    }
+
+    // Típus
+    if (data.type !== undefined) {
+        const cell = row.querySelector('[data-field="type"]');
+
+        if (cell) {
+            const input = cell.querySelector("input");
+
+            if (input) {
+                input.value = data.type || "";
+            } else {
+                cell.textContent = data.type || "N/A";
+            }
+        }
+    }
+
+    // Sorozatszám
+    if (data.serial !== undefined) {
+        const cell = row.querySelector('[data-field="serial"]');
+
+        if (cell) {
+            const input = cell.querySelector("input");
+
+            if (input) {
+                input.value = data.serial || "";
+            } else {
+                cell.textContent = data.serial || "N/A";
+            }
+        }
+    }
+
+    // Oldalszám
+    if (data.pages !== undefined) {
+        const cell = row.querySelector('[data-field="pages"]');
+
+        if (cell) {
+            const input = cell.querySelector("input");
+
+            if (input) {
+                input.value = data.pages ?? "";
+            } else {
+                cell.textContent = data.pages ?? "N/A";
+            }
+        }
+    }
+
+    // Rögzítve
+    if (data.rogzitve !== undefined) {
+        const cell = row.querySelector('[data-field="rogzitve"]');
+
+        if (cell) {
+            cell.textContent = formatDate(data.rogzitve);
+        }
+    }
 }
+
 
 /* -------------------------
 SAVE MONTHLY
