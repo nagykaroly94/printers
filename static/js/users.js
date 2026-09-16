@@ -168,45 +168,23 @@ function renderUsers() {
                     🔧
                 </button>
         
-                <button
-                    class="primary-btn delete-btn"
-                    type="button"
-                    onclick="deleteUser('${user.username}')"
-                    ${user.username === loggedInUsername ? "disabled" : ""}
-                >
-                    🗑️
+                <button class="primary-btn delete-btn" type="button" onclick="deleteUser('${user.username}')" ${user.username === loggedInUsername ? "disabled" : ""}>🗑️
                 </button>
-        
             </div>
-        
         </td>
-        
     `;
-        
-        
         usersBody.appendChild(row);
-        
-    });
-    
+    }); 
 }
-
 /* =========================
 JOGOSULTSÁG MÓDOSÍTÁSA
 ========================= */
 
 function changeUserRole(id, role) {
-    
-    
     const user =
     users.find(item => item.id === id);
-    
-    
     if (!user) return;
-    
-    
     user.role = role;
-    
-    
 }
 
 /* =========================
@@ -220,14 +198,10 @@ function setNewPassword(id) {
         console.error("Felhasználó nem található:", id);
         return;
     }
-    
     passwordUser = user;
-    
     document.getElementById("passwordUserName").textContent = user.name;
     document.getElementById("changePasswordInput").value = "";
-    
     document.getElementById("passwordModal").style.display = "flex";
-    
     document.getElementById("changePasswordInput").focus();
 }
 
@@ -360,12 +334,10 @@ async function editUser(id, btn) {
         .value;
         const isadmin = role === "admin" ? 1 : 0;
         
-        
         if (!name || !username || !email) {
             showToast("Minden mező kitöltése kötelező!");
             return;
         }
-        
         
         const response = await fetch("/update_user", {
             method: "POST",
@@ -380,17 +352,16 @@ async function editUser(id, btn) {
                 isadmin: isadmin
             })
         });
-        
+    
         if (!response.ok) {
             return;
         }
-        
+
         user.name = name;
         user.username = username;
         user.email = email;
         user.role = role;
-        
-        
+    
         // Újra inaktív
         inputs.forEach(input => {
             input.disabled = true;
@@ -473,27 +444,20 @@ async function deleteUser(username) {
     if (!confirm("Biztosan törölni szeretnéd ezt a felhasználót?")) {
         return;
     }
-    
     try {
-        
         const response = await fetch(
             `/delete_user/${encodeURIComponent(username)}`,
             {
                 method: "DELETE"
             }
         );
-        
         if (!response.ok) {
             alert("Hiba történt a felhasználó törlésekor.");
             return;
         }
-        
         await loadUsers();
-        
     } catch (error) {
-        
         console.error("Felhasználó törlési hiba:", error);
-        
         alert("Nem sikerült kapcsolódni a szerverhez.");
     }
 }
@@ -501,7 +465,6 @@ async function deleteUser(username) {
 /* =========================
 ÚJ FELHASZNÁLÓ
 ========================= */
-
 document
 .getElementById("addUserForm")
 .addEventListener("submit", async event => {
@@ -536,89 +499,54 @@ document
     const role =
     document.getElementById("newRole")
     .value;
-    
     const isadmin = Number(role);
-    
     if (password !== passwordConfirm) {
-        
         passwordConfirmInput.setCustomValidity(
             "A két jelszónak meg kell egyeznie."
         );
-        
         passwordConfirmInput.reportValidity();
-        
         return;
-        
     } else {
-        
         passwordConfirmInput.setCustomValidity("");
     }
     /* =========================
     ADATKÜLDÉS FLASKNAK
     ========================= */
-    
     try {
-        
         const response =
         await fetch("/add_user", {
-            
             method: "POST",
-            
             headers: {
                 "Content-Type": "application/json"
             },
-            
             body: JSON.stringify({
-                
                 nev: name,
-                
                 felhasznalonev: username,
-                
                 email: email,
-                
                 isadmin: isadmin,
-                
                 jelszo: password
-                
             })
-            
         });
-        
-        
         if (!response.ok) {
             return;
         }
-        
         /* =========================
         SIKERES MENTÉS
         ========================= */
-        
         event.target.reset();
-        
-        
         /* Felhasználók újratöltése */
-        
         if (typeof loadUsers === "function") {
-            
             await loadUsers();
-            
         } else {
-            
             renderUsers();
-            
         }
-        
-        
     } catch (error) {
-        
         console.error(
             "Felhasználó hozzáadási hiba:",
             error
         );        
     }
-    
 });
-
 
 /* =========================
 KERESÉS
@@ -649,33 +577,21 @@ document.querySelectorAll('input[type="password"]').forEach(input => {
         button.textContent = visible ? '👀' : '🫣';
         
     });
-    
     div.appendChild(button);
-    
 });
 /* =========================
 HTML ESCAPE
 ========================= */
-
 function escapeHtml(value) {
-    
-    
     return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-    
-    
+    .replaceAll("'", "&#039;"); 
 }
-
 function escapeAttribute(value) {
-    
-    
     return escapeHtml(value);
-    
-    
 }
 
 /* =========================
