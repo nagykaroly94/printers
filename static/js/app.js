@@ -57,14 +57,8 @@ events.onmessage = (event) => {
 function updateProgress(data) {
     const processed = data.processed || 0;
     const total = data.total || 1;
-
-    const percent = Math.min(
-        100,
-        Math.round((processed / total) * 100)
-    );
-
+    const percent = Math.min(100, Math.round((processed / total) * 100));
     const bar = document.getElementById("bar");
-
     if (bar) {
         bar.style.width = percent + "%";
     }
@@ -131,14 +125,9 @@ function start() {
         window.location.href = "/?autostart=1";
         return;
     }
-
     fetch("/start");
-
     isRunning = true;
-
     document.getElementById("bar").style.width = "0%";
-
-    loadInitial();
 }
 
 window.addEventListener("load", function () {
@@ -241,8 +230,7 @@ async function renderTables(results) {
         grouped[key].push(r);
     }
     
-    const uzemeltetoOptions =
-        await getOptions("/api/list_uzemelteto");
+    const uzemeltetoOptions = await getOptions("/api/list_uzemelteto");
 
     const sortedKeys = Object.keys(grouped)
         .sort((a, b) => {
@@ -251,94 +239,100 @@ async function renderTables(results) {
             return a.localeCompare(b, "hu");
         });
 
+    // Párhuzamos cím-lekérés az összes üzemeltetőhöz
+    const cimekCache = new Map();
+    const uzemIds = new Set();
+    
     for (const key of sortedKeys) {
+        for (const r of grouped[key]) {
+            let selectedUzemId = null;
+            if (r.uzemelteto_id !== undefined && r.uzemelteto_id !== null) {
+                selectedUzemId = r.uzemelteto_id;
+            } else if (r.uzemelteto) {
+                const match = uzemeltetoOptions.find(
+                    u => String(u.uzemelteto).trim() === String(r.uzemelteto).trim()
+                );
+                selectedUzemId = match ? match.id : null;
+            }
+            if (selectedUzemId !== null) {
+                uzemIds.add(selectedUzemId);
+            }
+        }
+    }
+    
+    // Párhuzamos API hívások
+    await Promise.all(
+        Array.from(uzemIds).map(id =>
+            getOptions(`/api/get_relations_by_uzem/${id}`).then(cimek => {
+                cimekCache.set(id, cimek);
+            })
+        )
+    );
 
+    for (const key of sortedKeys) {
         grouped[key].sort((a, b) =>
             (a.id || "").localeCompare(b.id || "", "hu")
         );
     
-    let h2 = document.createElement("h2");
-    h2.textContent = key;
-    
-    let table = document.createElement("table");
-    
-    table.innerHTML = `
-                <tr>
-                    <th>ID</th>
-                    <th>Hely</th>
-                    <th>IP</th>
-                    <th>Típus</th>
-                    <th>Sorozatszám</th>
-                    <th>Oldalszám</th>
-                    <th>Üzemeltető</th>
-                    <th>Cím</th>
-                    <th>Rögzítve</th>
-                    <th>Művelet</th>
-                </tr>
-            `;
-    
-    for (const r of grouped[key]) {
+        let h2 = document.createElement("h2");
+        h2.textContent = key;
         
-/*
-        console.log("NYOMTATÓ:", r.id);
-        console.log("UZEMELTETO:", r.uzemelteto);
-        console.log("UZEMELTETO_ID:", r.uzemelteto_id);
-        console.log("CIM:", r.cim);
-        console.log("CIM_ID:", r.cim_id);
-        console.log("OPCIOK:", uzemeltetoOptions);*/
-        let color = "#3b82f6";
-        let extraClass = "";
+        let table = document.createElement("table");
         
-        if (r.status === "ok") {
-            color = "#22c55e";
-        } else if (r.status === "error") {
-            color = "#ef4444";
-        }
+        table.innerHTML = `
+            <tr>
+                <th>ID</th>
+                <th>Hely</th>
+                <th>IP</th>
+                <th>Típus</th>
+                <th>Sorozatszám</th>
+                <th>Oldalszám</th>
+                <th>Üzemeltető</th>
+                <th>Cím</th>
+                <th>Rögzítve</th>
+                <th>Művelet</th>
+            </tr>
+        `;
         
-        if (isRunning) {
-            extraClass = "blink";
-        }
-        
-        let rowClass = "";
-        
-        if (r.rogzitve) {
-            const rogzitveDate = new Date(r.rogzitve);
-            const now = new Date();
-            const diffDays =
-            (now - rogzitveDate) / (1000 * 60 * 60 * 24);
+        for (const r of grouped[key]) {            
+            let rowClass = "";
             
-            if (diffDays > 7) {
-                rowClass = "error-row";
-                color = "#ffffff";
+            if (r.rogzitve) {
+                const rogzitveDate = new Date(r.rogzitve);
+                const now = new Date();
+                const diffDays = (now - rogzitveDate) / (1000 * 60 * 60 * 24);
+                
+                if (diffDays > 7) {
+                    rowClass = "error-row";
+                }
             }
-        }
-        
-        rowState[r.id] = {
-            extraClass: extraClass,
-            status: r.status,
-            ip: r.ip
-        };
-        const tr = document.createElement("tr");
-        
-        tr.className = rowClass;
-        tr.dataset.id = r.id;
-        
-        tr.innerHTML = `
-                    <td data-field="id"onclick="window.open('http://${escapeHtml(r.ip)}', '_blank')"style="cursor:pointer;">${r.id}</td>
-                    <td data-field="name"><input class="mfinput" type="text" value="${escapeHtml(r.name || "")}" disabled></td>
-                    <td data-field="ip"><input class="mfinput" type="text" value="${escapeHtml(r.ip || "")}" disabled></td>
-                    <td data-field="type"><input class="mfinput" type="text" value="${escapeHtml(r.type || "")}" disabled></td>
-                    <td data-field="serial"><input class="mfinput" type="text" value="${escapeHtml(r.serial || "")}" disabled></td>
-                    <td data-field="pages"><input class="mfinput" type="text" value="${escapeHtml(r.pages || "")}" disabled></td>
-                    <td data-field="uzemelteto"><select class="mfselect uzemelteto" disabled><option value="">Nincs megadva</option></select></td>
-                    <td data-field="cim"><select class="mfselect cim" disabled><option value="">Nincs megadva</option></select></td>
-                    <td data-field="rogzitve">${r.rogzitve ? new Date(r.rogzitve).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' }) : "N/A"}</td>
-                    <td>
-                        <button style="mfctnr button" title="Nyomtató adatainak módosítása" onclick="editPrinterInline(${r.id}, this)">🔧</button>
-                        <button style="mfctnr button" title="Nyomtató törlése" onclick="deleteRow(${r.id})">❌</button>
-                    </td>
-                `;
-        table.appendChild(tr);
+            rowState[r.id] = {
+                status: r.status,
+                ip: r.ip
+            };
+            
+            const tr = document.createElement("tr");
+            tr.className = rowClass;
+            tr.dataset.id = r.id;
+            
+            tr.innerHTML = `
+                <td data-field="id" onclick="window.open('http://${escapeHtml(r.ip)}', '_blank')" style="cursor:pointer;">${escapeHtml(r.id)}</td>
+                <td data-field="name"><input class="mfinput" type="text" value="${escapeHtml(r.name || "")}" disabled></td>
+                <td data-field="ip"><input class="mfinput" type="text" value="${escapeHtml(r.ip || "")}" disabled></td>
+                <td data-field="type"><input class="mfinput" type="text" value="${escapeHtml(r.type || "")}" disabled></td>
+                <td data-field="serial"><input class="mfinput" type="text" value="${escapeHtml(r.serial || "")}" disabled></td>
+                <td data-field="pages"><input class="mfinput" type="text" value="${escapeHtml(r.pages || "")}" disabled></td>
+                <td data-field="uzemelteto"><select class="mfselect uzemelteto" disabled><option value="">Nincs megadva</option></select></td>
+                <td data-field="cim"><select class="mfselect cim" disabled><option value="">Nincs megadva</option></select></td>
+                <td data-field="rogzitve">${r.rogzitve ? new Date(r.rogzitve).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' }) : "N/A"}</td>
+                <td>
+                    <button style="mfctnr button" title="Nyomtató adatainak módosítása" onclick="editPrinterInline(${r.id}, this)">🔧</button>
+                    <button style="mfctnr button" title="Nyomtató törlése" onclick="deleteRow(${r.id})">❌</button>
+                </td>
+            `;
+            
+            table.appendChild(tr);
+            
             const uzemSelect = tr.querySelector(".uzemelteto");
             const cimSelect = tr.querySelector(".cim");
 
@@ -351,7 +345,6 @@ async function renderTables(results) {
                 const match = uzemeltetoOptions.find(
                     u => String(u.uzemelteto).trim() === String(r.uzemelteto).trim()
                 );
-
                 selectedUzemId = match ? match.id : null;
             }
 
@@ -364,12 +357,9 @@ async function renderTables(results) {
                 selectedUzemId
             );
 
-            // Cím feltöltése
-            if (selectedUzemId !== null) {
-
-                const cimek = await getOptions(
-                    `/api/get_relations_by_uzem/${selectedUzemId}`
-                );
+            // Cím feltöltése (cache-ből)
+            if (selectedUzemId !== null && cimekCache.has(selectedUzemId)) {
+                const cimek = cimekCache.get(selectedUzemId);
 
                 // Cím ID meghatározása
                 let selectedCimId = null;
@@ -380,7 +370,6 @@ async function renderTables(results) {
                     const match = cimek.find(
                         c => String(c.cim).trim() === String(r.cim).trim()
                     );
-
                     selectedCimId = match ? match.cim_id : null;
                 }
 
@@ -392,17 +381,18 @@ async function renderTables(results) {
                     selectedCimId
                 );
             }
-    }
-    
-    
+        }
+        
         tables_div.appendChild(h2);
         tables_div.appendChild(table);
-    
-    let hr = document.createElement("hr");
-    hr.className = "separator";
-    tables_div.appendChild(hr);
+        
+        let hr = document.createElement("hr");
+        hr.className = "separator";
+        tables_div.appendChild(hr);
+    }
 }
-}
+
+
 /* -------------------------
 UPDATE PAGE COUNT
 ------------------------- */
@@ -685,26 +675,18 @@ function updateRow(data) {
     }
 
     let color = "#3b82f6";
-    let extraClass = "";
 
     if (data.status === "ok") {
         color = "#22c55e";
     }
     else if (data.status === "error") {
         color = "#ef4444";
-        extraClass = "blink error-blink";
     }
 
     // ID cella
     const idCell = row.querySelector('[data-field="id"]');
-
     if (idCell) {
         idCell.style.color = color;
-        idCell.classList.remove("blink", "error-blink");
-
-        if (extraClass) {
-            idCell.classList.add(...extraClass.split(" "));
-        }
     }
 
     // Típus
