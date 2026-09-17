@@ -35,14 +35,13 @@
 .menu button {
     display: block;
     width: 80%;
-    margin: 10px auto;
+    margin: 1em auto 10px;
     padding: 10px 20px;
     background: #2563eb;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    margin-top: 1em;
     font-size: 16px;
     text-align: left;
     transition: 0.3s;
