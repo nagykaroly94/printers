@@ -96,26 +96,6 @@ function updatePrinterStatus(data) {
     }
 }
 
-
-
-function showToast(message) {
-    const container = document.getElementById("toast-container");
-    
-    const toast = document.createElement("div");
-    toast.className = "toast";
-
-    if (typeof message === "string" && message.startsWith("HIBA! ")) {
-        toast.classList.add("error");
-    }
-
-    toast.textContent = message;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3100);
-}
-
 /* -------------------------
 START
 ------------------------- */

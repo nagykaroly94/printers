@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/hamburger.css') }}">
     <script src="static/js/app.js" defer></script>
     <script src="static/js/menu.js" defer></script>
+    <script src="{{ url_for('static', filename='js/toast.js') }}" defer></script>
     
     <title>PrinterSCOUT</title>
     
@@ -16,9 +17,6 @@
     <h1 class="header">🖨️ PrinterSCOUT<button style="float: right;" class="total_xlsx" onclick="window.location.href='/printer_pages.xlsx'">Teljes táblázat letöltése</button></h1>
     
     {% include '_menu.html' %}
-    
-    
-    <div id="toast-container"></div>
     {% include 'modal.html' %}
     <div class="progress">
         <div id="bar" class="bar"></div>
