@@ -5,7 +5,7 @@ let rowState = {};
 INIT
 ------------------------- */
 window.onload = function () {
-    if (window.location.pathname == "/") {
+    if (window.location.pathname === "/") {
         loadInitial();
         document.getElementById("bar").style.width = "0%";
     }
